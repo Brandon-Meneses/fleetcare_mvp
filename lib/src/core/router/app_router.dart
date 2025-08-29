@@ -2,6 +2,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/fleet/presentation/pages/bus_list_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/alerts/presentation/pages/alerts_page.dart';
+import '../../features/maintenance/presentation/pages/maintenance_page.dart';
+
 
 
 final appRouter = GoRouter(
@@ -9,5 +11,6 @@ final appRouter = GoRouter(
     GoRoute(path: '/', builder: (_, __) => const BusListPage()),
     GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
     GoRoute(path: '/alerts', builder: (_, __) => const AlertsPage()),
+    GoRoute(path: '/maintenance', builder: (_, __) => const MaintenancePage()),
   ],
 );

@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/di/providers.dart';
 import '../../domain/entities/bus.dart';
 import '../controllers/bus_list_controller.dart';
 import '../../../settings/presentation/settings_controller.dart';
 import '../../../settings/domain/config.dart';
 import '../../domain/value_objects/bus_state.dart';
 import '../../domain/services/rules_service.dart';
+import '../../../maintenance/presentation/controllers/maintenance_controller.dart';
+import '../../../maintenance/domain/value_objects/maintenance_enums.dart';
+import '../../../maintenance/domain/entities/maintenance_order.dart';
+
 
 class BusListPage extends ConsumerWidget {
   const BusListPage({super.key});
@@ -40,12 +45,13 @@ class BusListPage extends ConsumerWidget {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
-          ),
-          IconButton(
             icon: const Icon(Icons.warning_amber),
             onPressed: () => context.push('/alerts'),
+          ),
+          IconButton(
+            tooltip: 'Órdenes',
+            icon: const Icon(Icons.build_circle_outlined),
+            onPressed: () => context.push('/maintenance'),
           ),
           IconButton(
             icon: const Icon(Icons.settings),
@@ -103,9 +109,32 @@ class BusListPage extends ConsumerWidget {
                 await showDialog(context: context, builder: (_) => _BusFormDialog(initial: b));
                 await ref.read(busListControllerProvider.notifier).refresh();
               },
-              trailing: IconButton(
-                icon: const Icon(Icons.delete),
-                onPressed: () => ref.read(busListControllerProvider.notifier).remove(b.id),
+              trailing: PopupMenuButton<String>(
+                onSelected: (value) async {
+                  final maint = ref.read(maintenanceControllerProvider.notifier);
+                  if (value == 'plan') {
+                    await maint.planFromPrediction(bus: b);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Orden planificada desde predicción')),
+                      );
+                    }
+                  } else if (value == 'viewOrders') {
+                    if (context.mounted) {
+                      await showDialog(
+                        context: context,
+                        builder: (_) => _OrdersDialog(busId: b.id, plate: b.plate),
+                      );
+                    }
+                  } else if (value == 'delete') {
+                    await ref.read(busListControllerProvider.notifier).remove(b.id);
+                  }
+                },
+                itemBuilder: (ctx) => const [
+                  PopupMenuItem(value: 'plan', child: Text('Agendar por predicción')),
+                  PopupMenuItem(value: 'viewOrders', child: Text('Ver órdenes')),
+                  PopupMenuItem(value: 'delete', child: Text('Eliminar bus')),
+                ],
               ),
             );
           },
@@ -253,6 +282,122 @@ class _BusFormDialogState extends ConsumerState<_BusFormDialog> {
           },
           child: Text(isEdit ? 'Guardar' : 'Crear'),
         ),
+      ],
+    );
+  }
+}
+
+class _OrdersDialog extends ConsumerWidget {
+  const _OrdersDialog({required this.busId, required this.plate, super.key});
+  final String busId;
+  final String plate;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AlertDialog(
+      title: Text('Órdenes • $plate'),
+      content: SizedBox(
+        width: 420,
+        child: FutureBuilder(
+          future: ref.read(maintenanceControllerProvider.notifier).ordersForBus(busId),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()));
+            }
+            final items = snapshot.data!;
+            if (items.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(8.0),
+                child: Text('No hay órdenes para este bus.'),
+              );
+            }
+            return ListView.separated(
+              shrinkWrap: true,
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final o = items[i];
+                return ListTile(
+                  title: Text('${o.type.name.toUpperCase()} • ${o.status.name.toUpperCase()}'),
+                  subtitle: Text([
+                    if (o.plannedAt != null) 'Planificada: ${o.plannedAt!.toLocal().toString().split(" ").first}',
+                    if (o.openedAt  != null) 'Abierta: ${o.openedAt!.toLocal().toString().split(" ").first}',
+                    if (o.closedAt  != null) 'Cerrada: ${o.closedAt!.toLocal().toString().split(" ").first}',
+                    if (o.notes != null && o.notes!.isNotEmpty) 'Notas: ${o.notes}',
+                  ].join('  •  ')),
+                  trailing: _OrderActions(order: o),
+                );
+              },
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar')),
+        TextButton(
+          onPressed: () async {
+            // atajo: planificar manual para mañana
+            final bus = await ref.read(busRepositoryProvider).findById(busId);
+            if (bus != null) {
+              await ref.read(maintenanceControllerProvider.notifier).planFromPrediction(
+                bus: bus,
+                targetDate: DateTime.now().add(const Duration(days: 1)),
+              );
+              (context as Element).markNeedsBuild(); // refrescar el diálogo
+            }
+          },
+          child: const Text('Planificar (+1 día)'),
+        ),
+      ],
+    );
+  }
+}
+
+class _OrderActions extends ConsumerWidget {
+  const _OrderActions({required this.order, super.key});
+  final MaintenanceOrder order;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final maint = ref.read(maintenanceControllerProvider.notifier);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (order.status == MaintenanceStatus.planned)
+        IconButton(
+          tooltip: 'Abrir',
+          onPressed: () => maint.openOrder(order),
+          icon: const Icon(Icons.play_arrow),
+        ),
+      if (order.status == MaintenanceStatus.open)
+        IconButton(
+          tooltip: 'Cerrar',
+          onPressed: () async {
+            final notes = await showDialog<String>(
+              context: context,
+              builder: (_) => const _CloseNotesDialog(),
+            );
+            await maint.closeOrder(order, notes: notes);
+          },
+          icon: const Icon(Icons.check),
+        ),
+    ]);
+  }
+}
+
+class _CloseNotesDialog extends StatefulWidget {
+  const _CloseNotesDialog({super.key});
+  @override
+  State<_CloseNotesDialog> createState() => _CloseNotesDialogState();
+}
+class _CloseNotesDialogState extends State<_CloseNotesDialog> {
+  final _c = TextEditingController();
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Notas de cierre'),
+      content: TextField(controller: _c, decoration: const InputDecoration(hintText: 'Opcional')),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        FilledButton(onPressed: () => Navigator.pop(context, _c.text.trim()), child: const Text('Guardar')),
       ],
     );
   }
