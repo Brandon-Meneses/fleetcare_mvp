@@ -5,6 +5,7 @@ import '../../../maintenance/domain/value_objects/maintenance_enums.dart';
 import '../../../../core/di/providers.dart';
 import '../controllers/maintenance_controller.dart';
 
+
 enum _Filter { all, planned, open, closed }
 
 class MaintenancePage extends ConsumerStatefulWidget {
@@ -60,6 +61,24 @@ class _MaintenancePageState extends ConsumerState<MaintenancePage> {
             ),
           ),
         ],
+      ),
+
+      // 👇 Aquí agregamos el FAB
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Nueva orden',
+        onPressed: () async {
+          final newOrder = await showDialog<MaintenanceOrder>(
+            context: context,
+            builder: (_) => const _NewOrderDialog(),
+          );
+          if (newOrder != null) {
+            await ref.read(maintenanceControllerProvider.notifier).createOrder(newOrder);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Orden creada')),
+            );
+          }
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
@@ -170,6 +189,58 @@ class _CloseNotesDialogState extends State<_CloseNotesDialog> {
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
         FilledButton(onPressed: () => Navigator.pop(context, _c.text.trim()), child: const Text('Guardar')),
+      ],
+    );
+  }
+}
+
+class _NewOrderDialog extends ConsumerStatefulWidget {
+  const _NewOrderDialog({super.key});
+  @override
+  ConsumerState<_NewOrderDialog> createState() => _NewOrderDialogState();
+}
+
+class _NewOrderDialogState extends ConsumerState<_NewOrderDialog> {
+  MaintenanceType _type = MaintenanceType.preventive;
+  final _notesCtrl = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nueva orden de mantenimiento'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownButtonFormField<MaintenanceType>(
+            value: _type,
+            decoration: const InputDecoration(labelText: 'Tipo'),
+            items: MaintenanceType.values.map((t) {
+              return DropdownMenuItem(value: t, child: Text(t.name.toUpperCase()));
+            }).toList(),
+            onChanged: (v) => setState(() => _type = v!),
+          ),
+          TextField(
+            controller: _notesCtrl,
+            decoration: const InputDecoration(labelText: 'Notas'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        FilledButton(
+          onPressed: () {
+            final newOrder = MaintenanceOrder(
+              id: '',
+              busId: 'bus-1', // ⚠️ TODO: seleccionar bus real
+              type: _type,
+              status: MaintenanceStatus.planned,
+              plannedAt: DateTime.now(),
+              notes: _notesCtrl.text.trim(),
+            );
+            Navigator.pop(context, newOrder);
+          },
+          child: const Text('Crear'),
+        ),
       ],
     );
   }

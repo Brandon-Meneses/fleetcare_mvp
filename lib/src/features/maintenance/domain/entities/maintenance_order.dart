@@ -8,7 +8,9 @@ class MaintenanceOrder with _$MaintenanceOrder {
   const factory MaintenanceOrder({
     required String id,
     required String busId,
+    @JsonKey(unknownEnumValue: MaintenanceStatus.planned)
     required MaintenanceStatus status,
+    @JsonKey(unknownEnumValue: MaintenanceType.preventive)
     required MaintenanceType type,
     DateTime? plannedAt,
     DateTime? openedAt,

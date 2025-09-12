@@ -11,8 +11,16 @@ _$MaintenanceOrderImpl _$$MaintenanceOrderImplFromJson(
 ) => _$MaintenanceOrderImpl(
   id: json['id'] as String,
   busId: json['busId'] as String,
-  status: $enumDecode(_$MaintenanceStatusEnumMap, json['status']),
-  type: $enumDecode(_$MaintenanceTypeEnumMap, json['type']),
+  status: $enumDecode(
+    _$MaintenanceStatusEnumMap,
+    json['status'],
+    unknownValue: MaintenanceStatus.planned,
+  ),
+  type: $enumDecode(
+    _$MaintenanceTypeEnumMap,
+    json['type'],
+    unknownValue: MaintenanceType.preventive,
+  ),
   plannedAt: json['plannedAt'] == null
       ? null
       : DateTime.parse(json['plannedAt'] as String),
@@ -39,12 +47,12 @@ Map<String, dynamic> _$$MaintenanceOrderImplToJson(
 };
 
 const _$MaintenanceStatusEnumMap = {
-  MaintenanceStatus.planned: 'planned',
-  MaintenanceStatus.open: 'open',
-  MaintenanceStatus.closed: 'closed',
+  MaintenanceStatus.planned: 'PLANNED',
+  MaintenanceStatus.open: 'OPEN',
+  MaintenanceStatus.closed: 'CLOSED',
 };
 
 const _$MaintenanceTypeEnumMap = {
-  MaintenanceType.preventive: 'preventive',
-  MaintenanceType.corrective: 'corrective',
+  MaintenanceType.preventive: 'PREVENTIVE',
+  MaintenanceType.corrective: 'CORRECTIVE',
 };

@@ -52,6 +52,29 @@ class MaintenanceController extends StateNotifier<AsyncValue<List<MaintenanceOrd
     await refresh();
   }
 
+  Future<void> loadOrders() async {
+    state = const AsyncLoading();
+    try {
+      final repo = ref.read(maintenanceRepositoryProvider);
+      final all = await repo.list();
+      state = AsyncData(all);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
+  }
+
+  Future<void> createOrder(MaintenanceOrder order) async {
+    state = const AsyncLoading();
+    try {
+      final repo = ref.read(maintenanceRepositoryProvider);
+      await repo.upsert(order);
+      final all = await repo.list();
+      state = AsyncData(all);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
+  }
+
   Future<void> openOrder(MaintenanceOrder order) async {
     final repo = ref.read(maintenanceRepositoryProvider);
     await repo.upsert(order.copyWith(

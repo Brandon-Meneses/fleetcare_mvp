@@ -23,7 +23,9 @@ MaintenanceOrder _$MaintenanceOrderFromJson(Map<String, dynamic> json) {
 mixin _$MaintenanceOrder {
   String get id => throw _privateConstructorUsedError;
   String get busId => throw _privateConstructorUsedError;
+  @JsonKey(unknownEnumValue: MaintenanceStatus.planned)
   MaintenanceStatus get status => throw _privateConstructorUsedError;
+  @JsonKey(unknownEnumValue: MaintenanceType.preventive)
   MaintenanceType get type => throw _privateConstructorUsedError;
   DateTime? get plannedAt => throw _privateConstructorUsedError;
   DateTime? get openedAt => throw _privateConstructorUsedError;
@@ -50,8 +52,9 @@ abstract class $MaintenanceOrderCopyWith<$Res> {
   $Res call({
     String id,
     String busId,
+    @JsonKey(unknownEnumValue: MaintenanceStatus.planned)
     MaintenanceStatus status,
-    MaintenanceType type,
+    @JsonKey(unknownEnumValue: MaintenanceType.preventive) MaintenanceType type,
     DateTime? plannedAt,
     DateTime? openedAt,
     DateTime? closedAt,
@@ -135,8 +138,9 @@ abstract class _$$MaintenanceOrderImplCopyWith<$Res>
   $Res call({
     String id,
     String busId,
+    @JsonKey(unknownEnumValue: MaintenanceStatus.planned)
     MaintenanceStatus status,
-    MaintenanceType type,
+    @JsonKey(unknownEnumValue: MaintenanceType.preventive) MaintenanceType type,
     DateTime? plannedAt,
     DateTime? openedAt,
     DateTime? closedAt,
@@ -212,8 +216,8 @@ class _$MaintenanceOrderImpl implements _MaintenanceOrder {
   const _$MaintenanceOrderImpl({
     required this.id,
     required this.busId,
-    required this.status,
-    required this.type,
+    @JsonKey(unknownEnumValue: MaintenanceStatus.planned) required this.status,
+    @JsonKey(unknownEnumValue: MaintenanceType.preventive) required this.type,
     this.plannedAt,
     this.openedAt,
     this.closedAt,
@@ -228,8 +232,10 @@ class _$MaintenanceOrderImpl implements _MaintenanceOrder {
   @override
   final String busId;
   @override
+  @JsonKey(unknownEnumValue: MaintenanceStatus.planned)
   final MaintenanceStatus status;
   @override
+  @JsonKey(unknownEnumValue: MaintenanceType.preventive)
   final MaintenanceType type;
   @override
   final DateTime? plannedAt;
@@ -298,7 +304,9 @@ abstract class _MaintenanceOrder implements MaintenanceOrder {
   const factory _MaintenanceOrder({
     required final String id,
     required final String busId,
+    @JsonKey(unknownEnumValue: MaintenanceStatus.planned)
     required final MaintenanceStatus status,
+    @JsonKey(unknownEnumValue: MaintenanceType.preventive)
     required final MaintenanceType type,
     final DateTime? plannedAt,
     final DateTime? openedAt,
@@ -314,8 +322,10 @@ abstract class _MaintenanceOrder implements MaintenanceOrder {
   @override
   String get busId;
   @override
+  @JsonKey(unknownEnumValue: MaintenanceStatus.planned)
   MaintenanceStatus get status;
   @override
+  @JsonKey(unknownEnumValue: MaintenanceType.preventive)
   MaintenanceType get type;
   @override
   DateTime? get plannedAt;
