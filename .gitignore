@@ -1,4 +1,6 @@
-# Miscellaneous
+# =========================================
+# Archivos generales / Sistema
+# =========================================
 *.class
 *.log
 *.pyc
@@ -12,34 +14,74 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# =========================================
+# IDEs / Editores
+# =========================================
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
+*.xcworkspace/xcuserdata/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# =========================================
+# Flutter / Dart
+# =========================================
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
 
-# Symbolication related
+# Symbolication
 app.*.symbols
 
-# Obfuscation related
+# Obfuscation
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# =========================================
+# Android
+# =========================================
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/.gradle/
+/android/app/build/
+
+# =========================================
+# iOS
+# =========================================
+**/ios/Flutter/.last_build_id
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+ios/Podfile.lock
+# Xcode autogen
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcworkspace/contents.xcworkspacedata
+
+# =========================================
+# macOS
+# =========================================
+macos/Podfile.lock
+macos/Flutter/GeneratedPluginRegistrant.swift
+
+# =========================================
+# Windows
+# =========================================
+windows/flutter/generated_*
+windows/flutter/generated_plugins.cmake
+
+# =========================================
+# Linux
+# =========================================
+linux/flutter/generated_*
+linux/flutter/generated_plugins.cmake
+
+# =========================================
+# Dependencias opcionales
+# =========================================
+# Si NO quieres versionar dependencias exactas:
+pubspec.lock
+# (Si quieres fijar dependencias iguales para todos, quítalo del gitignore)
