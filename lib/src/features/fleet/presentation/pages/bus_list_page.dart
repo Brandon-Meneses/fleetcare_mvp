@@ -25,6 +25,11 @@ class BusListPage extends ConsumerWidget {
         title: const Text('Buses'),
         actions: [
           IconButton(
+            tooltip: 'Dashboard',
+            icon: const Icon(Icons.dashboard_outlined),
+            onPressed: () => context.push('/dashboard'),
+          ),
+          IconButton(
             icon: const Icon(Icons.add_task), // Quick add para probar
             tooltip: 'Quick add',
             onPressed: () async {
@@ -52,6 +57,11 @@ class BusListPage extends ConsumerWidget {
             tooltip: 'Órdenes',
             icon: const Icon(Icons.build_circle_outlined),
             onPressed: () => context.push('/maintenance'),
+          ),
+          IconButton(
+            tooltip: 'Informe IA',
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            onPressed: () => context.push('/report'),
           ),
           IconButton(
             icon: const Icon(Icons.settings),
