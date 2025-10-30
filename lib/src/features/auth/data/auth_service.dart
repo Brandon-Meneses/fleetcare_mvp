@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../domain/auth_models.dart';
 import 'auth_storage.dart';
+import 'ApiConfig.dart';
 
 class AuthService {
-  final String baseUrl = "http://localhost:8080"; // 👈 cambiar si usas emulador Android
+  final String baseUrl = ApiConfig.baseUrl;
 
   Future<LoginResponse> login(LoginRequest request) async {
     final res = await http.post(
