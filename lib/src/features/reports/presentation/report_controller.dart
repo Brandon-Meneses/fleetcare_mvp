@@ -5,10 +5,11 @@ import '../../settings/presentation/settings_controller.dart';
 import '../data/report_service.dart';
 import '../domain/report_models.dart';
 import '../../fleet/domain/entities/bus.dart';
+import '../../auth/data/ApiConfig.dart';
 
 final reportServiceProvider = Provider<ReportService>((ref) {
-  // TODO: reemplaza por tu endpoint real
-  const backendUrl = 'https://your-backend.example.com/report';
+  final backendUrl = '${ApiConfig.baseUrl}/report/area/MAINTENANCE';
+  // o /report para el informe general
   return ReportService(Dio(), backendUrl: backendUrl);
 });
 

@@ -51,7 +51,7 @@ class BusListPage extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.warning_amber),
-            onPressed: () => context.push('/alerts'),
+            onPressed: () => context.push('/notifications'),
           ),
           IconButton(
             tooltip: 'Órdenes',
@@ -138,12 +138,72 @@ class BusListPage extends ConsumerWidget {
                     }
                   } else if (value == 'delete') {
                     await ref.read(busListControllerProvider.notifier).remove(b.id);
+                  } else if (value == 'decommission') {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Confirmar acción'),
+                        content: Text('¿Deseas marcar el bus ${b.plate} como fuera de servicio?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+                          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirmar')),
+                        ],
+                      ),
+                    );
+
+                    if (confirmed == true) {
+                      await ref.read(busRepositoryProvider).updateStatus(b.id, "FUERA_SERVICIO");
+                      await ref.read(busListControllerProvider.notifier).refresh();
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Bus ${b.plate} marcado como fuera de servicio')),
+                        );
+                      }
+                    }
+                  } else if (value == 'replace') {
+                    final replacementPlate = await showDialog<String>(
+                      context: context,
+                      builder: (_) {
+                        final controller = TextEditingController();
+                        return AlertDialog(
+                          title: const Text('Registrar reemplazo'),
+                          content: TextField(
+                            controller: controller,
+                            decoration: const InputDecoration(labelText: 'Placa del nuevo bus'),
+                          ),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context, controller.text.trim()),
+                              child: const Text('Guardar'),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+
+                    if (replacementPlate != null && replacementPlate.isNotEmpty) {
+                      await ref.read(busRepositoryProvider).updateStatus(
+                        b.id,
+                        "REEMPLAZADO",
+                        replacementId: replacementPlate,
+                      );
+                      await ref.read(busListControllerProvider.notifier).refresh();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Bus ${b.plate} reemplazado por $replacementPlate')),
+                        );
+                      }
+                    }
                   }
                 },
                 itemBuilder: (ctx) => const [
                   PopupMenuItem(value: 'plan', child: Text('Agendar por predicción')),
                   PopupMenuItem(value: 'viewOrders', child: Text('Ver órdenes')),
                   PopupMenuItem(value: 'delete', child: Text('Eliminar bus')),
+                  PopupMenuItem(value: 'decommission', child: Text('Marcar fuera de servicio')),
+                  PopupMenuItem(value: 'replace', child: Text('Registrar reemplazo')),
                 ],
               ),
             );

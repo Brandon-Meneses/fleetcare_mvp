@@ -1,13 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/fleet/data/bus_repository_impl.dart';
 import '../../features/fleet/domain/repositories/bus_repository.dart';
-import '../../features/maintenance/data/maintenance_repository_impl.dart';
 import '../../features/maintenance/domain/repositories/maintenance_repository.dart';
 import '../../features/maintenance/data/api_maintenance_repository.dart';
+import '../../features/fleet/data/bus_repository_api.dart';
 
 final busRepositoryProvider = Provider<BusRepository>((ref) {
-  // Más adelante cambias a Isar/Supabase sin tocar la UI
-  return InMemoryBusRepository();
+  return ApiBusRepository(); // ahora usa el backend, no memoria
 });
 
 final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
@@ -15,3 +13,4 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
   // return InMemoryMaintenanceRepository();
   return ApiMaintenanceRepository();
 });
+

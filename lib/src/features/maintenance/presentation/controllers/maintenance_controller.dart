@@ -3,7 +3,7 @@ import '../../../fleet/domain/entities/bus.dart';
 import '../../../fleet/domain/services/rules_service.dart';
 import '../../../settings/presentation/settings_controller.dart';
 import '../../domain/entities/maintenance_order.dart';
-import '../../domain/repositories/maintenance_repository.dart';
+import '../../data/api_maintenance_repository.dart';
 import '../../domain/value_objects/maintenance_enums.dart';
 import '../../../../core/di/providers.dart';
 
@@ -77,20 +77,28 @@ class MaintenanceController extends StateNotifier<AsyncValue<List<MaintenanceOrd
 
   Future<void> openOrder(MaintenanceOrder order) async {
     final repo = ref.read(maintenanceRepositoryProvider);
-    await repo.upsert(order.copyWith(
-      status: MaintenanceStatus.open,
-      openedAt: DateTime.now(),
-    ));
+    if (repo is ApiMaintenanceRepository) {
+      await repo.openOrder(order.id);
+    } else {
+      await repo.upsert(order.copyWith(
+        status: MaintenanceStatus.open,
+        openedAt: DateTime.now(),
+      ));
+    }
     await refresh();
   }
 
   Future<void> closeOrder(MaintenanceOrder order, {String? notes}) async {
     final repo = ref.read(maintenanceRepositoryProvider);
-    await repo.upsert(order.copyWith(
-      status: MaintenanceStatus.closed,
-      closedAt: DateTime.now(),
-      notes: notes ?? order.notes,
-    ));
+    if (repo is ApiMaintenanceRepository) {
+      await repo.closeOrder(order.id, notes: notes);
+    } else {
+      await repo.upsert(order.copyWith(
+        status: MaintenanceStatus.closed,
+        closedAt: DateTime.now(),
+        notes: notes ?? order.notes,
+      ));
+    }
     await refresh();
   }
 

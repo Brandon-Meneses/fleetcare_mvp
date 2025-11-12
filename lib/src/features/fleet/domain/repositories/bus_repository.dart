@@ -5,4 +5,5 @@ abstract class BusRepository {
   Future<Bus> upsert(Bus bus);   // crea/actualiza
   Future<void> delete(String id);
   Future<Bus?> findById(String id);
+  Future<void> updateStatus(String id, String status, {String? replacementId});
 }

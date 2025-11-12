@@ -7,10 +7,7 @@ part of 'report_models.dart';
 // **************************************************************************
 
 _$ReportKpiImpl _$$ReportKpiImplFromJson(Map<String, dynamic> json) =>
-    _$ReportKpiImpl(
-      name: json['name'] as String,
-      value: json['value'] as String,
-    );
+    _$ReportKpiImpl(name: json['name'] as String, value: json['value']);
 
 Map<String, dynamic> _$$ReportKpiImplToJson(_$ReportKpiImpl instance) =>
     <String, dynamic>{'name': instance.name, 'value': instance.value};

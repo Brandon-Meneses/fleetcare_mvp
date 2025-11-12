@@ -22,7 +22,7 @@ ReportKpi _$ReportKpiFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$ReportKpi {
   String get name => throw _privateConstructorUsedError;
-  String get value => throw _privateConstructorUsedError;
+  dynamic get value => throw _privateConstructorUsedError;
 
   /// Serializes this ReportKpi to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -39,7 +39,7 @@ abstract class $ReportKpiCopyWith<$Res> {
   factory $ReportKpiCopyWith(ReportKpi value, $Res Function(ReportKpi) then) =
       _$ReportKpiCopyWithImpl<$Res, ReportKpi>;
   @useResult
-  $Res call({String name, String value});
+  $Res call({String name, dynamic value});
 }
 
 /// @nodoc
@@ -56,17 +56,17 @@ class _$ReportKpiCopyWithImpl<$Res, $Val extends ReportKpi>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? name = null, Object? value = null}) {
+  $Res call({Object? name = null, Object? value = freezed}) {
     return _then(
       _value.copyWith(
             name: null == name
                 ? _value.name
                 : name // ignore: cast_nullable_to_non_nullable
                       as String,
-            value: null == value
+            value: freezed == value
                 ? _value.value
                 : value // ignore: cast_nullable_to_non_nullable
-                      as String,
+                      as dynamic,
           )
           as $Val,
     );
@@ -82,7 +82,7 @@ abstract class _$$ReportKpiImplCopyWith<$Res>
   ) = __$$ReportKpiImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String name, String value});
+  $Res call({String name, dynamic value});
 }
 
 /// @nodoc
@@ -98,17 +98,17 @@ class __$$ReportKpiImplCopyWithImpl<$Res>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? name = null, Object? value = null}) {
+  $Res call({Object? name = null, Object? value = freezed}) {
     return _then(
       _$ReportKpiImpl(
         name: null == name
             ? _value.name
             : name // ignore: cast_nullable_to_non_nullable
                   as String,
-        value: null == value
+        value: freezed == value
             ? _value.value
             : value // ignore: cast_nullable_to_non_nullable
-                  as String,
+                  as dynamic,
       ),
     );
   }
@@ -125,7 +125,7 @@ class _$ReportKpiImpl implements _ReportKpi {
   @override
   final String name;
   @override
-  final String value;
+  final dynamic value;
 
   @override
   String toString() {
@@ -138,12 +138,16 @@ class _$ReportKpiImpl implements _ReportKpi {
         (other.runtimeType == runtimeType &&
             other is _$ReportKpiImpl &&
             (identical(other.name, name) || other.name == name) &&
-            (identical(other.value, value) || other.value == value));
+            const DeepCollectionEquality().equals(other.value, value));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, name, value);
+  int get hashCode => Object.hash(
+    runtimeType,
+    name,
+    const DeepCollectionEquality().hash(value),
+  );
 
   /// Create a copy of ReportKpi
   /// with the given fields replaced by the non-null parameter values.
@@ -162,7 +166,7 @@ class _$ReportKpiImpl implements _ReportKpi {
 abstract class _ReportKpi implements ReportKpi {
   const factory _ReportKpi({
     required final String name,
-    required final String value,
+    required final dynamic value,
   }) = _$ReportKpiImpl;
 
   factory _ReportKpi.fromJson(Map<String, dynamic> json) =
@@ -171,7 +175,7 @@ abstract class _ReportKpi implements ReportKpi {
   @override
   String get name;
   @override
-  String get value;
+  dynamic get value;
 
   /// Create a copy of ReportKpi
   /// with the given fields replaced by the non-null parameter values.

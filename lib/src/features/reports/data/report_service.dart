@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import '../../fleet/domain/entities/bus.dart';
 import '../../settings/domain/config.dart';
 import '../domain/report_models.dart';
+import '../../auth/data/auth_storage.dart';
 
 class ReportService {
   final Dio _dio;
@@ -25,7 +26,7 @@ class ReportService {
     return data['summary'] is String &&
         data['kpis'] is List &&
         data['sections'] is List &&
-        (data['kpis'] as List).every((e) => e is Map && e['name'] is String && e['value'] is String) &&
+        (data['kpis'] as List).every((e) => e is Map && e['name'] is String) &&
         (data['sections'] as List).every((e) => e is Map && e['title'] is String && e['content'] is String);
   }
 
@@ -54,47 +55,36 @@ class ReportService {
     required AppConfig config,
   }) async {
     final dataHash = _dataHash(buses, config);
+    final token = await AuthStorage.getToken();
 
+    // --- ESTA ES LA FORMA CORRECTA ---
     final payload = {
-      'prompt': 'Genera JSON con summary, KPIs y sections (solo JSON válido).',
-      'schema_hint': {
-        'summary': 'string',
-        'kpis': [{'name': 'string', 'value': 'string'}],
-        'sections': [{'title': 'string', 'content': 'string'}],
-        'dataHash': 'string'
+      'fleet': buses.map((b) => {
+        'plate': b.plate,
+        'kmCurrent': b.kmCurrent,
+        'lastServiceAt': b.lastServiceAt?.toIso8601String().split('T').first
+      }).toList(),
+      'config': {
+        'kmThreshold': config.kmThreshold,
+        'monthsThreshold': config.monthsThreshold,
       },
-      'fleet': buses.map((b) => b.toJson()).toList(),
-      'config': {'kmThreshold': config.kmThreshold, 'monthsThreshold': config.monthsThreshold},
       'dataHash': dataHash,
     };
 
-    int attempts = 0;
-    while (attempts < 2) {
-      attempts++;
-      try {
-        final res = await _dio.post(_backendUrl, data: payload, options: Options(
-          headers: {
-            // NO API KEY aquí. El backend debe manejarla.
-            'Content-Type': 'application/json',
-          },
-          sendTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 5),
-        ));
+    final res = await _dio.post(
+      _backendUrl,   // /report/area/MAINTENANCE
+      data: payload,
+      options: Options(
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        sendTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ),
+    );
 
-        final data = res.data is Map<String, dynamic> ? res.data as Map<String, dynamic>
-            : jsonDecode(res.data as String) as Map<String, dynamic>;
-
-        if (_isValidReport(data)) {
-          // forzar dataHash si el backend no lo incluyó
-          data['dataHash'] = data['dataHash'] ?? dataHash;
-          return ReportResponse.fromJson(data);
-        }
-      } catch (_) {
-        // intenta de nuevo
-      }
-    }
-
-    // Fallback
-    return _fallbackLocal(buses, config, dataHash);
+    final data = res.data;
+    return ReportResponse.fromJson(data);
   }
 }

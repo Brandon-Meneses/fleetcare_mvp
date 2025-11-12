@@ -6,10 +6,11 @@ part 'report_models.g.dart';
 class ReportKpi with _$ReportKpi {
   const factory ReportKpi({
     required String name,
-    required String value, // deja string para flexibilidad ("12", "85%")
+    required dynamic value,   // ← permite int, double o string
   }) = _ReportKpi;
 
-  factory ReportKpi.fromJson(Map<String, dynamic> json) => _$ReportKpiFromJson(json);
+  factory ReportKpi.fromJson(Map<String, dynamic> json) =>
+      _$ReportKpiFromJson(json);
 }
 
 @freezed
