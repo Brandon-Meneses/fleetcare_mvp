@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../domain/auth_models.dart';
+import 'auth_state.dart';
 import 'auth_storage.dart';
 import 'ApiConfig.dart';
 
@@ -15,11 +16,13 @@ class AuthService {
     );
 
     if (res.statusCode == 200) {
+      print("RAW RESPONSE: ${res.body}");
       final data = jsonDecode(res.body);
+      print("TOKEN PARSED: ${data['token']}");
       final loginResponse = LoginResponse.fromJson(data);
 
       // 👉 guardamos token con AuthStorage
-      await AuthStorage.saveToken(loginResponse.token);
+      await AuthState.setLoggedIn(loginResponse.token);
 
       return loginResponse;
     } else {
@@ -28,6 +31,6 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    await AuthStorage.clearToken();
+    await AuthState.logout();
   }
 }

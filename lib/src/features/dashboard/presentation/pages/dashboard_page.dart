@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../auth/presentation/auth_controller.dart';
 import '../../../fleet/presentation/controllers/bus_list_controller.dart';
 import '../../../maintenance/presentation/controllers/maintenance_controller.dart';
 import '../../../fleet/domain/entities/bus.dart';
@@ -41,6 +42,14 @@ class DashboardPage extends ConsumerWidget {
             tooltip: 'Config',
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
+          ),
+          IconButton(
+            tooltip: "Cerrar sesión",
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await ref.read(authControllerProvider.notifier).logout();
+              // ❌ NO navegas aquí, GoRouter se encarga solo
+            },
           ),
         ],
       ),
