@@ -6,6 +6,7 @@ import '../../fleet/presentation/controllers/bus_list_controller.dart';
 import '../../maintenance/presentation/controllers/maintenance_controller.dart';
 import '../../reports/presentation/report_controller.dart';
 import '../../settings/presentation/settings_controller.dart';
+import '../data/auth_info.dart';
 import '../data/auth_service.dart';
 import '../data/auth_state.dart';
 import '../domain/auth_models.dart';
@@ -45,6 +46,8 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       ref.invalidate(maintenanceControllerProvider);
       ref.invalidate(reportControllerProvider);
       ref.invalidate(configProvider);
+      ref.invalidate(rolesProvider);
+      ref.invalidate(areasProvider);
 
       state = const AsyncData(null);
     } catch (e, st) {
@@ -61,5 +64,8 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
     ref.invalidate(maintenanceControllerProvider);
     ref.invalidate(reportControllerProvider);
     ref.invalidate(configProvider);
+    ref.invalidate(rolesProvider);
+    ref.invalidate(areasProvider);
+
   }
 }

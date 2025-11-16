@@ -47,4 +47,8 @@ class AuthState {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString("jwtToken") != null;
   }
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("jwtToken");
+  }
 }

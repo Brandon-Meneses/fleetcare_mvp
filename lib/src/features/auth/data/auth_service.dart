@@ -28,6 +28,7 @@ class AuthService {
         loginResponse.areas,
       );
 
+
       return loginResponse;
     } else {
       throw Exception("Credenciales inválidas");

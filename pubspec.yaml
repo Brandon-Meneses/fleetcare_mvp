@@ -7,6 +7,7 @@ environment:
   sdk: ^3.8.1
 
 dependencies:
+  jwt_decoder: ^2.0.1
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8

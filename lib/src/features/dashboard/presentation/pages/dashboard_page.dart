@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../auth/data/auth_info.dart';
 import '../../../auth/presentation/auth_controller.dart';
 import '../../../fleet/presentation/controllers/bus_list_controller.dart';
 import '../../../maintenance/presentation/controllers/maintenance_controller.dart';
@@ -12,132 +13,238 @@ import '../../../maintenance/presentation/controllers/maintenance_controller.dar
 import '../../../settings/presentation/settings_controller.dart';
 import '../dashboard_controller.dart';
 
+
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final stats = ref.watch(dashboardStatsProvider);
+    final rolesAsync = ref.watch(rolesProvider);
+    final areasAsync = ref.watch(areasProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-        actions: [
+    // Esperamos roles primero
+    return rolesAsync.when(
+      loading: () => const Scaffold(
+          body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(
+          body: Center(child: Text("Error roles: $e"))),
+      data: (roles) {
+        return areasAsync.when(
+          loading: () => const Scaffold(
+              body: Center(child: CircularProgressIndicator())),
+          error: (e, _) => Scaffold(
+              body: Center(child: Text("Error áreas: $e"))),
+          data: (areas) {
+            return _DashboardContent(context, ref, roles, areas);
+          },
+        );
+      },
+    );
+  }
+}
+
+Widget _DashboardContent(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> roles,
+    List<String> areas,
+    ) {
+  final stats = ref.watch(dashboardStatsProvider);
+
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Dashboard'),
+      actions: [
+        if (roles.contains("ADMIN") || areas.contains("MAINTENANCE"))
           IconButton(
             tooltip: 'Buses',
-            icon: const Icon(Icons.directions_bus_filled_outlined),
+            icon: const Icon(Icons.directions_bus),
             onPressed: () => context.push('/buslist'),
           ),
+
+        if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
           IconButton(
             tooltip: 'Órdenes',
-            icon: const Icon(Icons.build_circle_outlined),
+            icon: const Icon(Icons.build_circle),
             onPressed: () => context.push('/maintenance'),
           ),
+
+        if (roles.contains("ADMIN") || areas.contains("FINANCE"))
           IconButton(
             tooltip: 'Informe IA',
             icon: const Icon(Icons.picture_as_pdf_outlined),
             onPressed: () => context.push('/report'),
           ),
+
+        if (roles.contains("ADMIN"))
           IconButton(
             tooltip: 'Config',
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
           ),
-          IconButton(
-            tooltip: "Cerrar sesión",
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authControllerProvider.notifier).logout();
-              // ❌ NO navegas aquí, GoRouter se encarga solo
-            },
-          ),
-        ],
-      ),
-      body: stats.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (s) {
-          final total = (s.totalBuses == 0) ? 1 : s.totalBuses;
-          final pOk = s.ok / total;
-          final pSoon = s.dueSoon / total;
-          final pOver = s.overdue / total;
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              await ref.read(busListControllerProvider.notifier).refresh();
-              await ref.read(maintenanceControllerProvider.notifier).refresh();
-            },
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Acciones rápidas
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _QuickChip(label: 'Buses', icon: Icons.directions_bus, onTap: () => context.push('/buslist')),
-                    _QuickChip(label: 'Alertas', icon: Icons.warning_amber_rounded, onTap: () => context.push('/alerts')),
-                    _QuickChip(label: 'Órdenes', icon: Icons.build_circle_outlined, onTap: () => context.push('/maintenance')),
-                    _QuickChip(label: 'Config', icon: Icons.settings, onTap: () => context.push('/settings')),
-                  ],
-                ),
-                const SizedBox(height: 16),
+        IconButton(
+          tooltip: "Cerrar sesión",
+          icon: const Icon(Icons.logout),
+          onPressed: () async {
+            await ref.read(authControllerProvider.notifier).logout();
+          },
+        ),
+      ],
+    ),
 
-                // KPIs principales
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _StatCard(title: 'Total buses', value: s.totalBuses.toString(), color: Colors.blue),
-                    _StatCard(title: 'OK', value: s.ok.toString(), color: Colors.green),
-                    _StatCard(title: 'Próximo', value: s.dueSoon.toString(), color: Colors.orange),
-                    _StatCard(title: 'Vencido', value: s.overdue.toString(), color: Colors.red),
-                  ],
-                ),
-                const SizedBox(height: 16),
+    // ---------- BODY ----------
+    body: stats.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (s) {
+        final total = (s.totalBuses == 0) ? 1 : s.totalBuses;
 
-                // Barras de distribución
-                Card(
-                  elevation: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Distribución de estado', style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 12),
-                        _KpiBar(label: 'OK', value: pOk, color: Colors.green, trailing: '${(pOk*100).toStringAsFixed(0)}%'),
-                        _KpiBar(label: 'Próximo', value: pSoon, color: Colors.orange, trailing: '${(pSoon*100).toStringAsFixed(0)}%'),
-                        _KpiBar(label: 'Vencido', value: pOver, color: Colors.red, trailing: '${(pOver*100).toStringAsFixed(0)}%'),
-                      ],
+        final pOk = s.ok / total;
+        final pSoon = s.dueSoon / total;
+        final pOver = s.overdue / total;
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            await ref.read(busListControllerProvider.notifier).refresh();
+            await ref.read(maintenanceControllerProvider.notifier).refresh();
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // Acciones rápidas
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (roles.contains("ADMIN") || areas.contains("MAINTENANCE"))
+                    _QuickChip(
+                      label: 'Buses',
+                      icon: Icons.directions_bus,
+                      onTap: () => context.push('/buslist'),
                     ),
+
+                  if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
+                    _QuickChip(
+                      label: 'Alertas',
+                      icon: Icons.warning_amber_rounded,
+                      onTap: () => context.push('/alerts'),
+                    ),
+
+                  if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
+                    _QuickChip(
+                      label: 'Órdenes',
+                      icon: Icons.build_circle_outlined,
+                      onTap: () => context.push('/maintenance'),
+                    ),
+
+                  if (roles.contains("ADMIN"))
+                    _QuickChip(
+                      label: 'Config',
+                      icon: Icons.settings,
+                      onTap: () => context.push('/settings'),
+                    ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // KPI CARDS
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _StatCard(
+                      title: 'Total buses',
+                      value: s.totalBuses.toString(),
+                      color: Colors.blue),
+                  _StatCard(
+                      title: 'OK',
+                      value: s.ok.toString(),
+                      color: Colors.green),
+                  _StatCard(
+                      title: 'Próximo',
+                      value: s.dueSoon.toString(),
+                      color: Colors.orange),
+                  _StatCard(
+                      title: 'Vencido',
+                      value: s.overdue.toString(),
+                      color: Colors.red),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // BARRA DE DISTRIBUCIÓN
+              Card(
+                elevation: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Distribución de estado',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 12),
+                      _KpiBar(
+                          label: 'OK',
+                          value: pOk,
+                          color: Colors.green,
+                          trailing:
+                          '${(pOk * 100).toStringAsFixed(0)}%'),
+                      _KpiBar(
+                          label: 'Próximo',
+                          value: pSoon,
+                          color: Colors.orange,
+                          trailing:
+                          '${(pSoon * 100).toStringAsFixed(0)}%'),
+                      _KpiBar(
+                          label: 'Vencido',
+                          value: pOver,
+                          color: Colors.red,
+                          trailing:
+                          '${(pOver * 100).toStringAsFixed(0)}%'),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
+              ),
 
-                // Órdenes
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _StatCard(title: 'Planificadas', value: s.planned.toString(), color: Colors.indigo),
-                    _StatCard(title: 'Abiertas', value: s.open.toString(), color: Colors.teal),
-                    _StatCard(title: 'Cerradas', value: s.closed.toString(), color: Colors.grey),
-                  ],
-                ),
-                const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-                // Más urgentes (vencidos)
-                const Text('Más urgentes (vencidos)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                _UrgentList(buses: s.topOverdue),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
+              // ÓRDENES
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _StatCard(
+                      title: 'Planificadas',
+                      value: s.planned.toString(),
+                      color: Colors.indigo),
+                  _StatCard(
+                      title: 'Abiertas',
+                      value: s.open.toString(),
+                      color: Colors.teal),
+                  _StatCard(
+                      title: 'Cerradas',
+                      value: s.closed.toString(),
+                      color: Colors.grey),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // LISTA URGENTES
+              const Text('Más urgentes (vencidos)',
+                  style: TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              _UrgentList(buses: s.topOverdue),
+            ],
+          ),
+        );
+      },
+    ),
+  );
 }
 
 // ---------- Widgets de apoyo ----------
