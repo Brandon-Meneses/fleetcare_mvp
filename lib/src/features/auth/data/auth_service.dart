@@ -22,7 +22,11 @@ class AuthService {
       final loginResponse = LoginResponse.fromJson(data);
 
       // 👉 guardamos token con AuthStorage
-      await AuthState.setLoggedIn(loginResponse.token);
+      await AuthState.setLoggedIn(
+        loginResponse.token,
+        loginResponse.roles,
+        loginResponse.areas,
+      );
 
       return loginResponse;
     } else {

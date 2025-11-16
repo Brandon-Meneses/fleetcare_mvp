@@ -31,7 +31,11 @@ class AuthController extends StateNotifier<AsyncValue<void>> {
       // -------------------------------
       // 1️⃣ TOKEN GUARDADO
       // -------------------------------
-      await AuthState.setLoggedIn(response.token);
+      await AuthState.setLoggedIn(
+        response.token,
+        response.roles,
+        response.areas,
+      );
 
       // -------------------------------
       // 2️⃣ INVALIDAR providers que dependen del token
