@@ -116,4 +116,18 @@ class ApiBusRepository implements BusRepository {
       throw Exception("Error al actualizar estado del bus: ${res.body}");
     }
   }
+  Future<DateTime?> nextMaintenanceDate(String busId) async {
+    final res = await http.get(
+      Uri.parse('$_baseUrl/buses/$busId/prediction'),
+      headers: await _headers(),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final finalDate = data['finalDate'];
+      return finalDate != null ? DateTime.parse(finalDate) : null;
+    }
+
+    return null;
+  }
 }

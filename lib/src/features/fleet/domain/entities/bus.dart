@@ -11,7 +11,7 @@ class Bus with _$Bus {
 
     // fechas que vienen del backend
     DateTime? lastMaintenanceDate,
-    DateTime? lastServiceAt, // opcional si tu backend lo usa
+    //DateTime? lastServiceAt, // opcional si tu backend lo usa
 
     String? alias,
     String? notes,

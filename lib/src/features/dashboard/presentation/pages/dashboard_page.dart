@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/di/providers.dart';
 import '../../../auth/data/auth_info.dart';
 import '../../../auth/presentation/auth_controller.dart';
 import '../../../fleet/presentation/controllers/bus_list_controller.dart';
@@ -339,84 +340,93 @@ class _UrgentList extends ConsumerWidget {
       return const Text('No hay buses vencidos 🎉');
     }
 
-    final cfg = ref.watch(configProvider);
+    final repo = ref.read(busRepositoryProvider);
     final maint = ref.read(maintenanceControllerProvider.notifier);
 
     return Card(
       child: Column(
-        children: buses.map((b) {
-          // Estado del backend
-          final status = b.status; // "OK", "PROXIMO", "VENCIDO", etc.
-
-          String? statusLabel;
-          Color color;
+        children: buses.map((bus) {
+          // --- STATUS LABEL + COLOR ---
+          final status = bus.status;
+          String label = status!!;
+          Color color = Colors.grey;
 
           switch (status) {
             case "OK":
-              statusLabel = "OK";
+              label = "OK";
               color = Colors.green;
               break;
             case "PROXIMO":
-              statusLabel = "Próximo";
+              label = "Próximo";
               color = Colors.orange;
               break;
             case "VENCIDO":
-              statusLabel = "Vencido";
+              label = "Vencido";
               color = Colors.red;
               break;
             case "FUERA_SERVICIO":
-              statusLabel = "Fuera de servicio";
+              label = "Fuera de servicio";
               color = Colors.grey;
               break;
             case "REEMPLAZADO":
-              statusLabel = "Reemplazado";
+              label = "Reemplazado";
               color = Colors.blueGrey;
               break;
-            default:
-              statusLabel = status;
-              color = Colors.grey;
           }
 
-          // Predicción solo informativa
-          final due = RulesService.predictDueDate(
-            bus: b,
-            kmThreshold: cfg.kmThreshold,
-            monthsThreshold: cfg.monthsThreshold,
-            kmPerDayEstimated: 200,
-          );
+          // --- TARJETA ---
+          return FutureBuilder<DateTime?>(
+            future: repo.nextMaintenanceDate(bus.id),
+            builder: (context, snapshot) {
+              final next = snapshot.data;
+              final nextStr = next == null
+                  ? "-"
+                  : next.toLocal().toString().split(" ").first;
 
-          return ListTile(
-            leading: Chip(
-              label: Text(
-                statusLabel!,
-                style: TextStyle(color: color, fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: color.withOpacity(0.12),
-            ),
-            title: Text(b.plate),
-            subtitle: Text(
-              'Est.: ${due?.toLocal().toString().split(" ").first ?? "-"}  •  Km: ${b.kmCurrent}',
-            ),
-            trailing: Wrap(
-              spacing: 8,
-              children: [
-                OutlinedButton(
-                  onPressed: () async {
-                    await maint.planFromPrediction(bus: b);
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Orden planificada desde predicción')),
-                    );
-                  },
-                  child: const Text('Agendar'),
+              return ListTile(
+                leading: Chip(
+                  label: Text(
+                    label,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  backgroundColor: color.withOpacity(0.15),
                 ),
-                IconButton(
-                  tooltip: 'Ver órdenes',
-                  onPressed: () => context.push('/maintenance'),
-                  icon: const Icon(Icons.list_alt),
+
+                title: Text(bus.plate),
+
+                subtitle: Text(
+                  'Próx. mant.: $nextStr  •  Km: ${bus.kmCurrent}',
                 ),
-              ],
-            ),
+
+                trailing: Wrap(
+                  spacing: 8,
+                  children: [
+                    if (status != "FUERA_SERVICIO" &&
+                        status != "REEMPLAZADO")
+                      OutlinedButton(
+                        onPressed: () async {
+                          await maint.planFromPrediction(bus: bus);
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('Orden planificada desde predicción')),
+                          );
+                        },
+                        child: const Text('Agendar'),
+                      ),
+
+                    IconButton(
+                      tooltip: 'Ver órdenes',
+                      onPressed: () => context.push('/maintenance'),
+                      icon: const Icon(Icons.list_alt),
+                    ),
+                  ],
+                ),
+              );
+            },
           );
         }).toList(),
       ),

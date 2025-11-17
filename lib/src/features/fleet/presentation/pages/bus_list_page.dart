@@ -101,169 +101,181 @@ class _BusListView extends ConsumerWidget {
         final canDecommission = Perms.canDecommission(areas, roles);
         final canReplace = Perms.canReplace(areas, roles);
 
-        return ListTile(
-          title: Text(bus.plate),
-          subtitle: Text("Km: ${bus.kmCurrent}"),
-          onTap: canEdit
-              ? () async {
-            await showDialog(
-              context: context,
-              builder: (_) => _BusFormDialog(initial: bus),
-            );
-            await ref.read(busListControllerProvider.notifier).refresh();
-          }
-              : null,
-          trailing: PopupMenuButton<String>(
-            itemBuilder: (_) {
-              final items = <PopupMenuEntry<String>>[];
+        return FutureBuilder<DateTime?>(
+          future: ref.read(busRepositoryProvider).nextMaintenanceDate(bus.id),
+          builder: (context, snap) {
+            final nextDate = snap.data;
 
-              if (canPlan)
-                items.add(const PopupMenuItem(value: "plan", child: Text("Agendar por predicción")));
+            return ListTile(
+              title: Row(
+                children: [
+                  Text(bus.plate),
+                  const SizedBox(width: 12),
 
-              if (canViewOrders)
-                items.add(const PopupMenuItem(value: "viewOrders", child: Text("Ver órdenes")));
-
-              if (canDelete)
-                items.add(const PopupMenuItem(value: "delete", child: Text("Eliminar bus")));
-
-              if (canDecommission)
-                items.add(const PopupMenuItem(value: "decommission", child: Text("Marcar fuera de servicio")));
-
-              if (canReplace)
-                items.add(const PopupMenuItem(value: "replace", child: Text("Registrar reemplazo")));
-
-              // fallback si no tiene permisos
-              if (items.isEmpty) {
-                items.add(const PopupMenuItem(
-                  enabled: false,
-                  child: Text("Sin acciones disponibles"),
-                ));
-              }
-
-              return items;
-            },
-            onSelected: (value) async {
-              print("SELECCIONADO: $value");
-
-              final controller = ref.read(busListControllerProvider.notifier);
-
-              switch (value) {
-                case "plan":
-                  await ref.read(maintenanceControllerProvider.notifier)
-                      .planFromPrediction(bus: bus);
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Orden planificada desde predicción')),
-                    );
-                  }
-                  break;
-
-                case "viewOrders":
-                  if (context.mounted) {
-                    showDialog(
-                      context: context,
-                      builder: (_) => _OrdersDialog(busId: bus.id, plate: bus.plate),
-                    );
-                  }
-                  break;
-
-                case "delete":
-                  await controller.remove(bus.id);
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Bus ${bus.plate} eliminado')),
-                    );
-                  }
-                  break;
-
-                case "decommission":
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: const Text('Confirmar acción'),
-                      content: Text('¿Deseas marcar el bus ${bus.plate} como fuera de servicio?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancelar'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Confirmar'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirmed == true) {
-                    await ref.read(busRepositoryProvider)
-                        .updateStatus(bus.id, "FUERA_SERVICIO");
-                    await ref.read(busListControllerProvider.notifier).refresh();
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Bus ${bus.plate} marcado como fuera de servicio')),
-                      );
-                    }
-                  }
-                  break;
-
-                case "replace":
-                  final replacementPlate = await showDialog<String>(
-                    context: context,
-                    builder: (_) {
-                      final controller = TextEditingController();
-                      return AlertDialog(
-                        title: const Text('Registrar reemplazo'),
-                        content: TextField(
-                          controller: controller,
-                          decoration: const InputDecoration(labelText: 'Placa del nuevo bus'),
-                        ),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(context, controller.text.trim()),
-                            child: const Text('Guardar'),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-
-                  if (replacementPlate != null && replacementPlate.isNotEmpty) {
-                    // 1) Crear el nuevo bus
-                    final newBus = await ref.read(busRepositoryProvider).upsert(
-                      Bus(
-                        id: '',
-                        plate: replacementPlate,
-                        kmCurrent: 0,
-                        lastServiceAt: DateTime.now(),
+                  Chip(
+                    label: Text(
+                      bus.status!,
+                      style: TextStyle(
+                        color: _statusColor(bus.status!),
+                        fontWeight: FontWeight.bold,
                       ),
-                    );
+                    ),
+                    backgroundColor: _statusColor(bus.status!).withOpacity(0.15),
+                  ),
+                ],
+              ),
 
-                    // 2) Actualizar el bus original como reemplazado
-                    await ref.read(busRepositoryProvider).updateStatus(
-                      bus.id,
-                      "REEMPLAZADO",
-                      replacementId: newBus.id,
-                    );
+              subtitle: Text([
+                'Km: ${bus.kmCurrent}',
+                'Último: ${bus.lastServiceAt?.toLocal().toString().split(" ").first ?? "-"}',
+                'Próx.: ${nextDate != null ? nextDate.toString().split(" ").first : "-"}',
+              ].join(' • ')),
 
-                    await ref.read(busListControllerProvider.notifier).refresh();
+              onTap: () async {
+                if (bus.status == "FUERA_SERVICIO" || bus.status == "REEMPLAZADO") return;
 
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Bus ${bus.plate} reemplazado por ${newBus.plate}')),
+                await showDialog(
+                  context: context,
+                  builder: (_) => _BusFormDialog(initial: bus),
+                );
+
+                await ref.read(busListControllerProvider.notifier).refresh();
+              },
+
+              trailing: PopupMenuButton<String>(
+                enabled: bus.status != "REEMPLAZADO",
+                onSelected: (value) async {
+                  final repo = ref.read(busRepositoryProvider);
+                  final maint = ref.read(maintenanceControllerProvider.notifier);
+
+                  switch (value) {
+                    case "plan":
+                      await maint.planFromPrediction(bus: bus);
+                      break;
+
+                    case "viewOrders":
+                      showDialog(
+                        context: context,
+                        builder: (_) => _OrdersDialog(busId: bus.id, plate: bus.plate),
                       );
-                    }
+                      break;
+
+                    case "delete":
+                      await ref.read(busListControllerProvider.notifier).remove(bus.id);
+                      break;
+
+                    case "decommission":
+                      final confirmed = await _confirm(
+                        context,
+                        '¿Deseas marcar el bus ${bus.plate} como FUERA DE SERVICIO?',
+                      );
+                      if (confirmed) {
+                        await repo.updateStatus(bus.id, "FUERA_SERVICIO");
+                        await ref.read(busListControllerProvider.notifier).refresh();
+                      }
+                      break;
+
+                    case "enable":
+                      final confirmed = await _confirm(
+                        context,
+                        '¿Deseas habilitar nuevamente el bus ${bus.plate}?',
+                      );
+                      if (confirmed) {
+                        await repo.updateStatus(bus.id, "OK");
+                        await ref.read(busListControllerProvider.notifier).refresh();
+                      }
+                      break;
+
+                    case "replace":
+                      final replacementPlate = await _askReplacementPlate(context);
+                      if (replacementPlate != null) {
+                        await repo.updateStatus(
+                          bus.id,
+                          "REEMPLAZADO",
+                          replacementId: replacementPlate,
+                        );
+                        await ref.read(busListControllerProvider.notifier).refresh();
+                      }
+                      break;
                   }
-                  break;
-              }
-            },
-          ),
+                },
+
+                itemBuilder: (_) {
+                  final items = <PopupMenuEntry<String>>[];
+
+                  final isActive = ["OK", "PROXIMO", "VENCIDO"].contains(bus.status);
+
+                  if (isActive) {
+                    items.add(const PopupMenuItem(value: 'plan', child: Text('Agendar por predicción')));
+                    items.add(const PopupMenuItem(value: 'viewOrders', child: Text('Ver órdenes')));
+                    items.add(const PopupMenuItem(value: 'delete', child: Text('Eliminar bus')));
+                    items.add(const PopupMenuItem(value: 'decommission', child: Text('Marcar fuera de servicio')));
+                    items.add(const PopupMenuItem(value: 'replace', child: Text('Registrar reemplazo')));
+                  }
+
+                  if (bus.status == "FUERA_SERVICIO") {
+                    items.add(const PopupMenuItem(value: 'enable', child: Text('Habilitar bus')));
+                  }
+
+                  if (bus.status == "REEMPLAZADO") {
+                    items.add(const PopupMenuItem(
+                      enabled: false,
+                      value: 'none',
+                      child: Text('Sin acciones disponibles'),
+                    ));
+                  }
+
+                  return items;
+                },
+              ),
+            );
+          },
         );
       },
+    );
+  }
+  Color _statusColor(String status) {
+    switch (status) {
+      case "OK": return Colors.green;
+      case "PROXIMO": return Colors.orange;
+      case "VENCIDO": return Colors.red;
+      case "FUERA_SERVICIO": return Colors.grey;
+      case "REEMPLAZADO": return Colors.blueGrey;
+      default: return Colors.grey;
+    }
+  }
+  Future<bool> _confirm(BuildContext context, String msg) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Confirmar'),
+        content: Text(msg),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirmar')),
+        ],
+      ),
+    ) ??
+        false;
+  }
+  Future<String?> _askReplacementPlate(BuildContext context) async {
+    final controller = TextEditingController();
+    return await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Registrar reemplazo'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Placa del nuevo bus'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
     );
   }
 }
