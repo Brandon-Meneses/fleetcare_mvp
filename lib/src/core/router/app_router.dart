@@ -16,20 +16,49 @@ Future<bool> isLoggedIn() async {
   return prefs.getString("jwtToken") != null;
 }
 
+Future<bool> canAccess(String route) async {
+  final roles = await AuthState.getRoles();
+  final areas = await AuthState.getAreas();
+
+  final isAdmin = roles.contains("ADMIN");
+
+  if (isAdmin) return true; // Admin ve todo 🚀
+
+  return switch (route) {
+    "/buslist"       => areas.contains("MAINTENANCE"),
+    "/maintenance"   => areas.contains("OPERATIONS"),
+    "/report"        => areas.contains("FINANCE"),
+    "/settings"      => false, // Solo admin
+    "/alerts"        => true, // todos
+    "/dashboard"     => true, // todos
+    _                => false,
+  };
+}
+
 final appRouter = GoRouter(
   initialLocation: "/login",
-  refreshListenable: AuthState.notifier, // 👈 escucha cambios
-  redirect: (context, state) {
+  refreshListenable: AuthState.notifier,
+  redirect: (context, state) async {
     final loggedIn = AuthState.notifier.value;
-    final loc = state.uri.path;
+    final location = state.uri.path;
 
-    if (!loggedIn && loc != "/login") return "/login";
-    if (loggedIn && loc == "/login") return "/dashboard";
+    // Si no está logueado → solo /login permitido
+    if (!loggedIn && location != "/login") return "/login";
+
+    // Si está logueado y va a login → mandarlo al dashboard
+    if (loggedIn && location == "/login") return "/dashboard";
+
+    // Protección por roles/áreas
+    if (loggedIn) {
+      final ok = await canAccess(location);
+      if (!ok) return "/dashboard";
+    }
 
     return null;
   },
   routes: [
     GoRoute(path: "/login", builder: (_, __) => const LoginPage()),
+
     GoRoute(path: "/dashboard", builder: (_, __) => const DashboardPage()),
     GoRoute(path: "/buslist", builder: (_, __) => const BusListPage()),
     GoRoute(path: "/settings", builder: (_, __) => const SettingsPage()),

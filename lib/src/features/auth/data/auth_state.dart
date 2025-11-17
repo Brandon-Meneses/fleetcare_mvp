@@ -9,11 +9,7 @@ class AuthState {
     notifier.value = prefs.getString("jwtToken") != null;
   }
 
-  static Future<void> setLoggedIn(
-      String token,
-      List<String> roles,
-      List<String> areas,
-      ) async {
+  static Future<void> setLoggedIn(String token, List<String> roles, List<String> areas,) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString("jwtToken", token);
     await prefs.setStringList("roles", roles);
@@ -22,13 +18,22 @@ class AuthState {
     notifier.value = true;
   }
 
+  static bool isLoggingOut = false;
+
   static Future<void> logout() async {
+    isLoggingOut = true;
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove("jwtToken");
     await prefs.remove("roles");
     await prefs.remove("areas");
 
     notifier.value = false;
+
+    // Espera pequeño para que GoRouter reciba el nuevo valor
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    isLoggingOut = false;
   }
 
   // === Helpers ===
