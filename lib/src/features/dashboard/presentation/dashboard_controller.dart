@@ -10,11 +10,11 @@ import '../../fleet/domain/entities/bus.dart';
 final dashboardStatsProvider = Provider<AsyncValue<DashboardStats>>((ref) {
   final busesState = ref.watch(busListControllerProvider);
   final ordersState = ref.watch(maintenanceControllerProvider);
-  final cfg = ref.watch(configProvider);
 
   if (busesState.isLoading || ordersState.isLoading) {
     return const AsyncValue.loading();
   }
+
   return busesState.when(
     loading: () => const AsyncValue.loading(),
     error: (e, st) => AsyncValue.error(e, st),
@@ -24,49 +24,58 @@ final dashboardStatsProvider = Provider<AsyncValue<DashboardStats>>((ref) {
         error: (e, st) => AsyncValue.error(e, st),
         data: (orders) {
           int ok = 0, dueSoon = 0, overdue = 0;
-          final overdueList = <({int urgency, dynamic bus})>[];
+          final overdueList = <({int urgency, Bus bus})>[];
 
           for (final b in buses) {
-            final s = RulesService.computeState(
-              bus: b,
-              kmThreshold: cfg.kmThreshold,
-              monthsThreshold: cfg.monthsThreshold,
-            );
-            switch (s) {
-              case BusState.ok: ok++; break;
-              case BusState.dueSoon: dueSoon++; break;
-              case BusState.overdue:
+            final status = b.status; // <- estado real del backend
+
+            switch (status) {
+              case "OK":
+                ok++;
+                break;
+
+              case "PROXIMO":
+                dueSoon++;
+                break;
+
+              case "VENCIDO":
                 overdue++;
-                // urgencia simple: días vencido (si null => 0)
+
                 final due = RulesService.predictDueDate(
                   bus: b,
-                  kmThreshold: cfg.kmThreshold,
-                  monthsThreshold: cfg.monthsThreshold,
+                  kmThreshold: ref.read(configProvider).kmThreshold,
+                  monthsThreshold: ref.read(configProvider).monthsThreshold,
                   kmPerDayEstimated: 200,
                 );
-                final daysOver = due == null ? 0 : DateTime.now().difference(due).inDays;
+
+                final daysOver = due == null
+                    ? 0
+                    : DateTime.now().difference(due).inDays;
+
                 overdueList.add((urgency: daysOver, bus: b));
                 break;
             }
           }
 
           overdueList.sort((a, b) => b.urgency.compareTo(a.urgency));
-          final topOverdue = overdueList.take(5).map((e) => e.bus as Bus).toList();
+          final topOverdue = overdueList.take(5).map((e) => e.bus).toList();
 
           final planned = orders.where((o) => o.status.name == 'planned').length;
-          final open    = orders.where((o) => o.status.name == 'open').length;
-          final closed  = orders.where((o) => o.status.name == 'closed').length;
+          final open = orders.where((o) => o.status.name == 'open').length;
+          final closed = orders.where((o) => o.status.name == 'closed').length;
 
-          return AsyncValue.data(DashboardStats(
-            totalBuses: buses.length,
-            ok: ok,
-            dueSoon: dueSoon,
-            overdue: overdue,
-            planned: planned,
-            open: open,
-            closed: closed,
-            topOverdue: topOverdue,
-          ));
+          return AsyncValue.data(
+            DashboardStats(
+              totalBuses: buses.length,
+              ok: ok,
+              dueSoon: dueSoon,
+              overdue: overdue,
+              planned: planned,
+              open: open,
+              closed: closed,
+              topOverdue: topOverdue,
+            ),
+          );
         },
       );
     },

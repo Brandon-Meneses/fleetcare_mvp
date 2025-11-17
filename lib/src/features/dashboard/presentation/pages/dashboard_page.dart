@@ -338,47 +338,46 @@ class _UrgentList extends ConsumerWidget {
     if (buses.isEmpty) {
       return const Text('No hay buses vencidos 🎉');
     }
+
     final cfg = ref.watch(configProvider);
     final maint = ref.read(maintenanceControllerProvider.notifier);
 
     return Card(
       child: Column(
         children: buses.map((b) {
-          // --- Nuevo manejo de estados desde backend ---
-          String statusLabel = "";
-          Color color = Colors.grey;
+          // Estado del backend
+          final status = b.status; // "OK", "PROXIMO", "VENCIDO", etc.
 
-          if (b.status == "FUERA_SERVICIO") {
-            statusLabel = "Fuera de servicio";
-            color = Colors.grey;
-          } else if (b.status == "REEMPLAZADO") {
-            statusLabel = "Reemplazado";
-            color = Colors.blueGrey;
-          } else {
-            // Estados dinámicos calculados
-            final state = RulesService.computeState(
-              bus: b,
-              kmThreshold: cfg.kmThreshold,
-              monthsThreshold: cfg.monthsThreshold,
-            );
+          String? statusLabel;
+          Color color;
 
-            switch (state) {
-              case BusState.ok:
-                statusLabel = "OK";
-                color = Colors.green;
-                break;
-              case BusState.dueSoon:
-                statusLabel = "Próximo";
-                color = Colors.orange;
-                break;
-              case BusState.overdue:
-                statusLabel = "Vencido";
-                color = Colors.red;
-                break;
-            }
+          switch (status) {
+            case "OK":
+              statusLabel = "OK";
+              color = Colors.green;
+              break;
+            case "PROXIMO":
+              statusLabel = "Próximo";
+              color = Colors.orange;
+              break;
+            case "VENCIDO":
+              statusLabel = "Vencido";
+              color = Colors.red;
+              break;
+            case "FUERA_SERVICIO":
+              statusLabel = "Fuera de servicio";
+              color = Colors.grey;
+              break;
+            case "REEMPLAZADO":
+              statusLabel = "Reemplazado";
+              color = Colors.blueGrey;
+              break;
+            default:
+              statusLabel = status;
+              color = Colors.grey;
           }
 
-          // Predicción
+          // Predicción solo informativa
           final due = RulesService.predictDueDate(
             bus: b,
             kmThreshold: cfg.kmThreshold,
@@ -389,7 +388,7 @@ class _UrgentList extends ConsumerWidget {
           return ListTile(
             leading: Chip(
               label: Text(
-                statusLabel,
+                statusLabel!,
                 style: TextStyle(color: color, fontWeight: FontWeight.bold),
               ),
               backgroundColor: color.withOpacity(0.12),
@@ -404,11 +403,10 @@ class _UrgentList extends ConsumerWidget {
                 OutlinedButton(
                   onPressed: () async {
                     await maint.planFromPrediction(bus: b);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Orden planificada desde predicción')),
-                      );
-                    }
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Orden planificada desde predicción')),
+                    );
                   },
                   child: const Text('Agendar'),
                 ),

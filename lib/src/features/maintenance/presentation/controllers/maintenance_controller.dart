@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../dashboard/presentation/dashboard_controller.dart';
 import '../../../fleet/domain/entities/bus.dart';
 import '../../../fleet/domain/services/rules_service.dart';
+import '../../../fleet/presentation/controllers/bus_list_controller.dart';
 import '../../../settings/presentation/settings_controller.dart';
 import '../../domain/entities/maintenance_order.dart';
 import '../../data/api_maintenance_repository.dart';
@@ -90,6 +92,7 @@ class MaintenanceController extends StateNotifier<AsyncValue<List<MaintenanceOrd
 
   Future<void> closeOrder(MaintenanceOrder order, {String? notes}) async {
     final repo = ref.read(maintenanceRepositoryProvider);
+
     if (repo is ApiMaintenanceRepository) {
       await repo.closeOrder(order.id, notes: notes);
     } else {
@@ -99,7 +102,13 @@ class MaintenanceController extends StateNotifier<AsyncValue<List<MaintenanceOrd
         notes: notes ?? order.notes,
       ));
     }
+
+    // 🔥 Refrescar las órdenes
     await refresh();
+
+    // 🔥 Refrescar lista de buses (estado OK/Próximo/Vencido)
+    await ref.read(busListControllerProvider.notifier).refresh();
+
   }
 
   Future<List<MaintenanceOrder>> ordersForBus(String busId) =>
