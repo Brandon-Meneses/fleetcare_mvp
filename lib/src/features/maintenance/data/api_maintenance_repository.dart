@@ -75,6 +75,9 @@ class ApiMaintenanceRepository implements MaintenanceRepository {
       Uri.parse("$baseUrl/maintenance/$id/open"),
       headers: await _headers(),
     );
+
+    print("OPEN RAW RESPONSE: ${res.body}");
+
     if (res.statusCode == 200) {
       return MaintenanceOrder.fromJson(jsonDecode(res.body));
     }
