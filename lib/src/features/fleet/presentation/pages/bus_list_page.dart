@@ -104,32 +104,54 @@ class _BusListView extends ConsumerWidget {
         return FutureBuilder<DateTime?>(
           future: ref.read(busRepositoryProvider).nextMaintenanceDate(bus.id),
           builder: (context, snap) {
-            final nextDate = snap.data;
+            DateTime? nextDate;
+
+            if (snap.connectionState == ConnectionState.waiting) {
+              nextDate = null;
+            } else if (snap.hasData) {
+              nextDate = snap.data;
+            }
+
+            /*final formattedNext = nextDate == null
+                ? "-"
+                : nextDate.toLocal().toString().split(" ").first;
+
+            final formattedLast = bus.lastMaintenanceDate == null
+                ? "-"
+                : bus.lastMaintenanceDate!.toLocal().toString().split(" ").first;*/
+
+            // dentro de itemBuilder: (_, i) {
+            final bus = buses[i];
 
             return ListTile(
               title: Row(
                 children: [
                   Text(bus.plate),
                   const SizedBox(width: 12),
-
                   Chip(
                     label: Text(
-                      bus.status!,
+                      bus.status ?? '-',
                       style: TextStyle(
-                        color: _statusColor(bus.status!),
+                        color: _statusColor(bus.status ?? ''),
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    backgroundColor: _statusColor(bus.status!).withOpacity(0.15),
+                    backgroundColor: _statusColor(bus.status ?? '').withOpacity(0.15),
                   ),
                 ],
               ),
 
-              subtitle: Text([
-                'Km: ${bus.kmCurrent}',
-                'Último: ${bus.lastServiceAt?.toLocal().toString().split(" ").first ?? "-"}',
-                'Próx.: ${nextDate != null ? nextDate.toString().split(" ").first : "-"}',
-              ].join(' • ')),
+              subtitle: Text(
+                [
+                  'Km: ${bus.kmCurrent}',
+                  'Último: ${bus.lastMaintenanceDate == null
+                      ? "-"
+                      : bus.lastMaintenanceDate!.toLocal().toString().split(" ").first}',
+                  'Próx.: ${bus.nextMaintenanceDate == null
+                      ? "-"
+                      : bus.nextMaintenanceDate!.toLocal().toString().split(" ").first}',
+                ].join(' • '),
+              ),
 
               onTap: () async {
                 if (bus.status == "FUERA_SERVICIO" || bus.status == "REEMPLAZADO") return;
@@ -150,7 +172,9 @@ class _BusListView extends ConsumerWidget {
 
                   switch (value) {
                     case "plan":
-                      await maint.planFromPrediction(bus: bus);
+                      if (["OK", "PROXIMO", "VENCIDO"].contains(bus.status)) {
+                        await maint.planFromPrediction(bus: bus);
+                      }
                       break;
 
                     case "viewOrders":
@@ -187,12 +211,12 @@ class _BusListView extends ConsumerWidget {
                       break;
 
                     case "replace":
-                      final replacementPlate = await _askReplacementPlate(context);
-                      if (replacementPlate != null) {
+                      final replacement = await _askReplacementPlate(context);
+                      if (replacement != null) {
                         await repo.updateStatus(
                           bus.id,
                           "REEMPLAZADO",
-                          replacementId: replacementPlate,
+                          replacementId: replacement,
                         );
                         await ref.read(busListControllerProvider.notifier).refresh();
                       }
@@ -301,7 +325,7 @@ class _BusFormDialogState extends ConsumerState<_BusFormDialog> {
     super.initState();
     _plate = TextEditingController(text: widget.initial?.plate ?? '');
     _km = TextEditingController(text: (widget.initial?.kmCurrent ?? 0).toString());
-    _lastServiceAt = widget.initial?.lastServiceAt ?? DateTime.now();
+    _lastServiceAt = widget.initial?.lastMaintenanceDate ?? DateTime.now();
     _alias.text = widget.initial?.alias ?? '';
     _notes.text = widget.initial?.notes ?? '';
   }
@@ -393,7 +417,7 @@ class _BusFormDialogState extends ConsumerState<_BusFormDialog> {
             final bus = (widget.initial ?? Bus(id: '', plate: _plate.text.trim(), kmCurrent: 0)).copyWith(
               plate: _plate.text.trim(),
               kmCurrent: int.parse(_km.text),
-              lastServiceAt: _lastServiceAt,
+              lastMaintenanceDate: _lastServiceAt,
               alias: _alias.text.trim().isEmpty ? null : _alias.text.trim(),
               notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
             );

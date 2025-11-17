@@ -62,7 +62,7 @@ class ReportService {
       'fleet': buses.map((b) => {
         'plate': b.plate,
         'kmCurrent': b.kmCurrent,
-        'lastServiceAt': b.lastServiceAt?.toIso8601String().split('T').first
+        'lastServiceAt': b.lastMaintenanceDate?.toIso8601String().split('T').first
       }).toList(),
       'config': {
         'kmThreshold': config.kmThreshold,

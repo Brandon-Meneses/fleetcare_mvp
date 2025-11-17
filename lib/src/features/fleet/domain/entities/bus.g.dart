@@ -13,9 +13,9 @@ _$BusImpl _$$BusImplFromJson(Map<String, dynamic> json) => _$BusImpl(
   lastMaintenanceDate: json['lastMaintenanceDate'] == null
       ? null
       : DateTime.parse(json['lastMaintenanceDate'] as String),
-  lastServiceAt: json['lastServiceAt'] == null
+  nextMaintenanceDate: json['nextMaintenanceDate'] == null
       ? null
-      : DateTime.parse(json['lastServiceAt'] as String),
+      : DateTime.parse(json['nextMaintenanceDate'] as String),
   alias: json['alias'] as String?,
   notes: json['notes'] as String?,
   status: json['status'] as String?,
@@ -27,7 +27,7 @@ Map<String, dynamic> _$$BusImplToJson(_$BusImpl instance) => <String, dynamic>{
   'plate': instance.plate,
   'kmCurrent': instance.kmCurrent,
   'lastMaintenanceDate': instance.lastMaintenanceDate?.toIso8601String(),
-  'lastServiceAt': instance.lastServiceAt?.toIso8601String(),
+  'nextMaintenanceDate': instance.nextMaintenanceDate?.toIso8601String(),
   'alias': instance.alias,
   'notes': instance.notes,
   'status': instance.status,

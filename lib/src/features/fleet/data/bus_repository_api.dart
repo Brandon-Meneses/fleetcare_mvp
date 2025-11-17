@@ -33,27 +33,47 @@ class ApiBusRepository implements BusRepository {
   Future<Bus> upsert(Bus bus) async {
     final headers = await _headers();
 
-    // Crear
+    // === 1. CREAR ===
     if (bus.id.isEmpty) {
       final body = jsonEncode({
-        "plate": bus.plate,
+        "plate": bus.plate.trim(),
         "kmInitial": bus.kmCurrent,
-        "dateEnabled": bus.lastServiceAt?.toIso8601String().split('T').first,
+        "dateEnabled": bus.lastMaintenanceDate?.toIso8601String().split('T').first,
       });
-      final res = await http.post(Uri.parse('$_baseUrl/buses'), headers: headers, body: body);
+
+      final res = await http.post(
+        Uri.parse('$_baseUrl/buses'),
+        headers: headers,
+        body: body,
+      );
+
       if (res.statusCode == 200 || res.statusCode == 201) {
         return Bus.fromJson(jsonDecode(res.body));
       }
-      throw Exception('Error al crear bus (${res.statusCode})');
+
+      throw Exception("Error al crear bus (${res.statusCode})");
     }
 
-    // Actualizar km o último mantenimiento (según lo que venga)
-    final body = jsonEncode({"km": bus.kmCurrent});
-    final res = await http.put(Uri.parse('$_baseUrl/buses/${bus.id}/km'), headers: headers, body: body);
+    // === 2. ACTUALIZACIÓN GENERAL ===
+    final body = jsonEncode({
+      "plate": bus.plate.trim(),
+      "kmCurrent": bus.kmCurrent,
+      "lastMaintenance": bus.lastMaintenanceDate?.toIso8601String().split("T").first,
+      "alias": bus.alias,
+      "notes": bus.notes,
+    });
+
+    final res = await http.put(
+      Uri.parse('$_baseUrl/buses/${bus.id}'),
+      headers: headers,
+      body: body,
+    );
+
     if (res.statusCode == 200) {
       return Bus.fromJson(jsonDecode(res.body));
     }
-    throw Exception('Error al actualizar bus (${res.statusCode})');
+
+    throw Exception("Error al actualizar bus (${res.statusCode})");
   }
 
   /// DELETE /buses/{id}
@@ -129,5 +149,24 @@ class ApiBusRepository implements BusRepository {
     }
 
     return null;
+  }
+
+  Future<Bus> update(Bus bus) async {
+    final res = await http.put(
+      Uri.parse("$_baseUrl/buses/${bus.id}"),
+      headers: await _headers(),
+      body: jsonEncode({
+        "plate": bus.plate,
+        "kmCurrent": bus.kmCurrent,
+        "lastMaintenance": bus.lastMaintenanceDate?.toIso8601String(),
+        "alias": bus.alias,
+        "notes": bus.notes,
+      }),
+    );
+
+    if (res.statusCode == 200) {
+      return Bus.fromJson(jsonDecode(res.body));
+    }
+    throw Exception("Error al actualizar bus: ${res.body}");
   }
 }

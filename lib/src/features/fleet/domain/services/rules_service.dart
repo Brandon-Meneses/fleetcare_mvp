@@ -13,11 +13,11 @@ class RulesService {
     now ??= DateTime.now();
 
     // TIEMPO
-    if (bus.lastServiceAt != null) {
+    if (bus.lastMaintenanceDate != null) {
       final nextByTime = DateTime(
-        bus.lastServiceAt!.year,
-        bus.lastServiceAt!.month + monthsThreshold,
-        bus.lastServiceAt!.day,
+        bus.lastMaintenanceDate!.year,
+        bus.lastMaintenanceDate!.month + monthsThreshold,
+        bus.lastMaintenanceDate!.day,
       );
       if (!now.isBefore(nextByTime)) {
         return BusState.overdue;
@@ -29,7 +29,7 @@ class RulesService {
     // KILOMETRAJE (delta desde último servicio; si null, toma todo el km actual)
     final deltaKm = (bus.kmCurrent - 0) - (0); // placeholder para cuando agregues km en último servicio si lo llevas aparte
     // Para MVP, asumimos delta = kmCurrent desde el último servicio si lastServiceAt != null.
-    final effectiveDeltaKm = bus.lastServiceAt == null ? bus.kmCurrent : bus.kmCurrent;
+    final effectiveDeltaKm = bus.lastMaintenanceDate == null ? bus.kmCurrent : bus.kmCurrent;
     if (effectiveDeltaKm >= kmThreshold) return BusState.overdue;
     if ((kmThreshold - effectiveDeltaKm) <= 500) return BusState.dueSoon; // margen configurable si quieres
 
@@ -51,18 +51,18 @@ class RulesService {
 
     // Por TIEMPO
     DateTime? dueByTime;
-    if (bus.lastServiceAt != null) {
+    if (bus.lastMaintenanceDate != null) {
       dueByTime = DateTime(
-        bus.lastServiceAt!.year,
-        bus.lastServiceAt!.month + monthsThreshold,
-        bus.lastServiceAt!.day,
+        bus.lastMaintenanceDate!.year,
+        bus.lastMaintenanceDate!.month + monthsThreshold,
+        bus.lastMaintenanceDate!.day,
       );
     }
 
     // Por KM
     DateTime? dueByKm;
     // Calcula km/día: si hay una fecha base (último mantenimiento) y km base, úsalo; si no, recurre al estimado.
-    final baseDate = baseDateForRate ?? bus.lastServiceAt;
+    final baseDate = baseDateForRate ?? bus.lastMaintenanceDate;
     final baseKm   = baseKmForRate ?? 0;
     double? kmPerDay;
     if (baseDate != null) {

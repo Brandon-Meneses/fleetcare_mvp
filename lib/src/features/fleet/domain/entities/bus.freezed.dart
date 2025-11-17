@@ -26,8 +26,8 @@ mixin _$Bus {
   int get kmCurrent =>
       throw _privateConstructorUsedError; // fechas que vienen del backend
   DateTime? get lastMaintenanceDate => throw _privateConstructorUsedError;
-  DateTime? get lastServiceAt =>
-      throw _privateConstructorUsedError; // opcional si tu backend lo usa
+  DateTime? get nextMaintenanceDate =>
+      throw _privateConstructorUsedError; //DateTime? lastServiceAt, // opcional si tu backend lo usa
   String? get alias => throw _privateConstructorUsedError;
   String? get notes =>
       throw _privateConstructorUsedError; // NUEVOS campos del backend
@@ -53,7 +53,7 @@ abstract class $BusCopyWith<$Res> {
     String plate,
     int kmCurrent,
     DateTime? lastMaintenanceDate,
-    DateTime? lastServiceAt,
+    DateTime? nextMaintenanceDate,
     String? alias,
     String? notes,
     String? status,
@@ -79,7 +79,7 @@ class _$BusCopyWithImpl<$Res, $Val extends Bus> implements $BusCopyWith<$Res> {
     Object? plate = null,
     Object? kmCurrent = null,
     Object? lastMaintenanceDate = freezed,
-    Object? lastServiceAt = freezed,
+    Object? nextMaintenanceDate = freezed,
     Object? alias = freezed,
     Object? notes = freezed,
     Object? status = freezed,
@@ -103,9 +103,9 @@ class _$BusCopyWithImpl<$Res, $Val extends Bus> implements $BusCopyWith<$Res> {
                 ? _value.lastMaintenanceDate
                 : lastMaintenanceDate // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
-            lastServiceAt: freezed == lastServiceAt
-                ? _value.lastServiceAt
-                : lastServiceAt // ignore: cast_nullable_to_non_nullable
+            nextMaintenanceDate: freezed == nextMaintenanceDate
+                ? _value.nextMaintenanceDate
+                : nextMaintenanceDate // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
             alias: freezed == alias
                 ? _value.alias
@@ -140,7 +140,7 @@ abstract class _$$BusImplCopyWith<$Res> implements $BusCopyWith<$Res> {
     String plate,
     int kmCurrent,
     DateTime? lastMaintenanceDate,
-    DateTime? lastServiceAt,
+    DateTime? nextMaintenanceDate,
     String? alias,
     String? notes,
     String? status,
@@ -163,7 +163,7 @@ class __$$BusImplCopyWithImpl<$Res> extends _$BusCopyWithImpl<$Res, _$BusImpl>
     Object? plate = null,
     Object? kmCurrent = null,
     Object? lastMaintenanceDate = freezed,
-    Object? lastServiceAt = freezed,
+    Object? nextMaintenanceDate = freezed,
     Object? alias = freezed,
     Object? notes = freezed,
     Object? status = freezed,
@@ -187,9 +187,9 @@ class __$$BusImplCopyWithImpl<$Res> extends _$BusCopyWithImpl<$Res, _$BusImpl>
             ? _value.lastMaintenanceDate
             : lastMaintenanceDate // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
-        lastServiceAt: freezed == lastServiceAt
-            ? _value.lastServiceAt
-            : lastServiceAt // ignore: cast_nullable_to_non_nullable
+        nextMaintenanceDate: freezed == nextMaintenanceDate
+            ? _value.nextMaintenanceDate
+            : nextMaintenanceDate // ignore: cast_nullable_to_non_nullable
                   as DateTime?,
         alias: freezed == alias
             ? _value.alias
@@ -220,7 +220,7 @@ class _$BusImpl implements _Bus {
     required this.plate,
     this.kmCurrent = 0,
     this.lastMaintenanceDate,
-    this.lastServiceAt,
+    this.nextMaintenanceDate,
     this.alias,
     this.notes,
     this.status,
@@ -241,8 +241,8 @@ class _$BusImpl implements _Bus {
   @override
   final DateTime? lastMaintenanceDate;
   @override
-  final DateTime? lastServiceAt;
-  // opcional si tu backend lo usa
+  final DateTime? nextMaintenanceDate;
+  //DateTime? lastServiceAt, // opcional si tu backend lo usa
   @override
   final String? alias;
   @override
@@ -255,7 +255,7 @@ class _$BusImpl implements _Bus {
 
   @override
   String toString() {
-    return 'Bus(id: $id, plate: $plate, kmCurrent: $kmCurrent, lastMaintenanceDate: $lastMaintenanceDate, lastServiceAt: $lastServiceAt, alias: $alias, notes: $notes, status: $status, replacementId: $replacementId)';
+    return 'Bus(id: $id, plate: $plate, kmCurrent: $kmCurrent, lastMaintenanceDate: $lastMaintenanceDate, nextMaintenanceDate: $nextMaintenanceDate, alias: $alias, notes: $notes, status: $status, replacementId: $replacementId)';
   }
 
   @override
@@ -269,8 +269,8 @@ class _$BusImpl implements _Bus {
                 other.kmCurrent == kmCurrent) &&
             (identical(other.lastMaintenanceDate, lastMaintenanceDate) ||
                 other.lastMaintenanceDate == lastMaintenanceDate) &&
-            (identical(other.lastServiceAt, lastServiceAt) ||
-                other.lastServiceAt == lastServiceAt) &&
+            (identical(other.nextMaintenanceDate, nextMaintenanceDate) ||
+                other.nextMaintenanceDate == nextMaintenanceDate) &&
             (identical(other.alias, alias) || other.alias == alias) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.status, status) || other.status == status) &&
@@ -286,7 +286,7 @@ class _$BusImpl implements _Bus {
     plate,
     kmCurrent,
     lastMaintenanceDate,
-    lastServiceAt,
+    nextMaintenanceDate,
     alias,
     notes,
     status,
@@ -313,7 +313,7 @@ abstract class _Bus implements Bus {
     required final String plate,
     final int kmCurrent,
     final DateTime? lastMaintenanceDate,
-    final DateTime? lastServiceAt,
+    final DateTime? nextMaintenanceDate,
     final String? alias,
     final String? notes,
     final String? status,
@@ -331,7 +331,7 @@ abstract class _Bus implements Bus {
   @override
   DateTime? get lastMaintenanceDate;
   @override
-  DateTime? get lastServiceAt; // opcional si tu backend lo usa
+  DateTime? get nextMaintenanceDate; //DateTime? lastServiceAt, // opcional si tu backend lo usa
   @override
   String? get alias;
   @override
