@@ -344,27 +344,60 @@ class _UrgentList extends ConsumerWidget {
     return Card(
       child: Column(
         children: buses.map((b) {
+          // --- Nuevo manejo de estados desde backend ---
+          String statusLabel = "";
+          Color color = Colors.grey;
+
+          if (b.status == "FUERA_SERVICIO") {
+            statusLabel = "Fuera de servicio";
+            color = Colors.grey;
+          } else if (b.status == "REEMPLAZADO") {
+            statusLabel = "Reemplazado";
+            color = Colors.blueGrey;
+          } else {
+            // Estados dinámicos calculados
+            final state = RulesService.computeState(
+              bus: b,
+              kmThreshold: cfg.kmThreshold,
+              monthsThreshold: cfg.monthsThreshold,
+            );
+
+            switch (state) {
+              case BusState.ok:
+                statusLabel = "OK";
+                color = Colors.green;
+                break;
+              case BusState.dueSoon:
+                statusLabel = "Próximo";
+                color = Colors.orange;
+                break;
+              case BusState.overdue:
+                statusLabel = "Vencido";
+                color = Colors.red;
+                break;
+            }
+          }
+
+          // Predicción
           final due = RulesService.predictDueDate(
             bus: b,
             kmThreshold: cfg.kmThreshold,
             monthsThreshold: cfg.monthsThreshold,
             kmPerDayEstimated: 200,
           );
-          final state = RulesService.computeState(
-            bus: b,
-            kmThreshold: cfg.kmThreshold,
-            monthsThreshold: cfg.monthsThreshold,
-          );
-          final color = switch (state) {
-            BusState.ok => Colors.green,
-            BusState.dueSoon => Colors.orange,
-            BusState.overdue => Colors.red,
-          };
 
           return ListTile(
-            leading: Icon(Icons.warning, color: color),
+            leading: Chip(
+              label: Text(
+                statusLabel,
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              ),
+              backgroundColor: color.withOpacity(0.12),
+            ),
             title: Text(b.plate),
-            subtitle: Text('Est.: ${due?.toLocal().toString().split(" ").first ?? "-"}  •  Km: ${b.kmCurrent}'),
+            subtitle: Text(
+              'Est.: ${due?.toLocal().toString().split(" ").first ?? "-"}  •  Km: ${b.kmCurrent}',
+            ),
             trailing: Wrap(
               spacing: 8,
               children: [

@@ -8,9 +8,17 @@ class Bus with _$Bus {
     required String id,
     required String plate,
     @Default(0) int kmCurrent,
-    DateTime? lastServiceAt,
+
+    // fechas que vienen del backend
+    DateTime? lastMaintenanceDate,
+    DateTime? lastServiceAt, // opcional si tu backend lo usa
+
     String? alias,
     String? notes,
+
+    // NUEVOS campos del backend
+    String? status,
+    String? replacementId,
   }) = _Bus;
 
   factory Bus.fromJson(Map<String, dynamic> json) => _$BusFromJson(json);

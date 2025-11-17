@@ -23,10 +23,16 @@ Bus _$BusFromJson(Map<String, dynamic> json) {
 mixin _$Bus {
   String get id => throw _privateConstructorUsedError;
   String get plate => throw _privateConstructorUsedError;
-  int get kmCurrent => throw _privateConstructorUsedError;
-  DateTime? get lastServiceAt => throw _privateConstructorUsedError;
+  int get kmCurrent =>
+      throw _privateConstructorUsedError; // fechas que vienen del backend
+  DateTime? get lastMaintenanceDate => throw _privateConstructorUsedError;
+  DateTime? get lastServiceAt =>
+      throw _privateConstructorUsedError; // opcional si tu backend lo usa
   String? get alias => throw _privateConstructorUsedError;
-  String? get notes => throw _privateConstructorUsedError;
+  String? get notes =>
+      throw _privateConstructorUsedError; // NUEVOS campos del backend
+  String? get status => throw _privateConstructorUsedError;
+  String? get replacementId => throw _privateConstructorUsedError;
 
   /// Serializes this Bus to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -46,9 +52,12 @@ abstract class $BusCopyWith<$Res> {
     String id,
     String plate,
     int kmCurrent,
+    DateTime? lastMaintenanceDate,
     DateTime? lastServiceAt,
     String? alias,
     String? notes,
+    String? status,
+    String? replacementId,
   });
 }
 
@@ -69,9 +78,12 @@ class _$BusCopyWithImpl<$Res, $Val extends Bus> implements $BusCopyWith<$Res> {
     Object? id = null,
     Object? plate = null,
     Object? kmCurrent = null,
+    Object? lastMaintenanceDate = freezed,
     Object? lastServiceAt = freezed,
     Object? alias = freezed,
     Object? notes = freezed,
+    Object? status = freezed,
+    Object? replacementId = freezed,
   }) {
     return _then(
       _value.copyWith(
@@ -87,6 +99,10 @@ class _$BusCopyWithImpl<$Res, $Val extends Bus> implements $BusCopyWith<$Res> {
                 ? _value.kmCurrent
                 : kmCurrent // ignore: cast_nullable_to_non_nullable
                       as int,
+            lastMaintenanceDate: freezed == lastMaintenanceDate
+                ? _value.lastMaintenanceDate
+                : lastMaintenanceDate // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
             lastServiceAt: freezed == lastServiceAt
                 ? _value.lastServiceAt
                 : lastServiceAt // ignore: cast_nullable_to_non_nullable
@@ -98,6 +114,14 @@ class _$BusCopyWithImpl<$Res, $Val extends Bus> implements $BusCopyWith<$Res> {
             notes: freezed == notes
                 ? _value.notes
                 : notes // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            status: freezed == status
+                ? _value.status
+                : status // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            replacementId: freezed == replacementId
+                ? _value.replacementId
+                : replacementId // ignore: cast_nullable_to_non_nullable
                       as String?,
           )
           as $Val,
@@ -115,9 +139,12 @@ abstract class _$$BusImplCopyWith<$Res> implements $BusCopyWith<$Res> {
     String id,
     String plate,
     int kmCurrent,
+    DateTime? lastMaintenanceDate,
     DateTime? lastServiceAt,
     String? alias,
     String? notes,
+    String? status,
+    String? replacementId,
   });
 }
 
@@ -135,9 +162,12 @@ class __$$BusImplCopyWithImpl<$Res> extends _$BusCopyWithImpl<$Res, _$BusImpl>
     Object? id = null,
     Object? plate = null,
     Object? kmCurrent = null,
+    Object? lastMaintenanceDate = freezed,
     Object? lastServiceAt = freezed,
     Object? alias = freezed,
     Object? notes = freezed,
+    Object? status = freezed,
+    Object? replacementId = freezed,
   }) {
     return _then(
       _$BusImpl(
@@ -153,6 +183,10 @@ class __$$BusImplCopyWithImpl<$Res> extends _$BusCopyWithImpl<$Res, _$BusImpl>
             ? _value.kmCurrent
             : kmCurrent // ignore: cast_nullable_to_non_nullable
                   as int,
+        lastMaintenanceDate: freezed == lastMaintenanceDate
+            ? _value.lastMaintenanceDate
+            : lastMaintenanceDate // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
         lastServiceAt: freezed == lastServiceAt
             ? _value.lastServiceAt
             : lastServiceAt // ignore: cast_nullable_to_non_nullable
@@ -164,6 +198,14 @@ class __$$BusImplCopyWithImpl<$Res> extends _$BusCopyWithImpl<$Res, _$BusImpl>
         notes: freezed == notes
             ? _value.notes
             : notes // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        status: freezed == status
+            ? _value.status
+            : status // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        replacementId: freezed == replacementId
+            ? _value.replacementId
+            : replacementId // ignore: cast_nullable_to_non_nullable
                   as String?,
       ),
     );
@@ -177,9 +219,12 @@ class _$BusImpl implements _Bus {
     required this.id,
     required this.plate,
     this.kmCurrent = 0,
+    this.lastMaintenanceDate,
     this.lastServiceAt,
     this.alias,
     this.notes,
+    this.status,
+    this.replacementId,
   });
 
   factory _$BusImpl.fromJson(Map<String, dynamic> json) =>
@@ -192,16 +237,25 @@ class _$BusImpl implements _Bus {
   @override
   @JsonKey()
   final int kmCurrent;
+  // fechas que vienen del backend
+  @override
+  final DateTime? lastMaintenanceDate;
   @override
   final DateTime? lastServiceAt;
+  // opcional si tu backend lo usa
   @override
   final String? alias;
   @override
   final String? notes;
+  // NUEVOS campos del backend
+  @override
+  final String? status;
+  @override
+  final String? replacementId;
 
   @override
   String toString() {
-    return 'Bus(id: $id, plate: $plate, kmCurrent: $kmCurrent, lastServiceAt: $lastServiceAt, alias: $alias, notes: $notes)';
+    return 'Bus(id: $id, plate: $plate, kmCurrent: $kmCurrent, lastMaintenanceDate: $lastMaintenanceDate, lastServiceAt: $lastServiceAt, alias: $alias, notes: $notes, status: $status, replacementId: $replacementId)';
   }
 
   @override
@@ -213,10 +267,15 @@ class _$BusImpl implements _Bus {
             (identical(other.plate, plate) || other.plate == plate) &&
             (identical(other.kmCurrent, kmCurrent) ||
                 other.kmCurrent == kmCurrent) &&
+            (identical(other.lastMaintenanceDate, lastMaintenanceDate) ||
+                other.lastMaintenanceDate == lastMaintenanceDate) &&
             (identical(other.lastServiceAt, lastServiceAt) ||
                 other.lastServiceAt == lastServiceAt) &&
             (identical(other.alias, alias) || other.alias == alias) &&
-            (identical(other.notes, notes) || other.notes == notes));
+            (identical(other.notes, notes) || other.notes == notes) &&
+            (identical(other.status, status) || other.status == status) &&
+            (identical(other.replacementId, replacementId) ||
+                other.replacementId == replacementId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -226,9 +285,12 @@ class _$BusImpl implements _Bus {
     id,
     plate,
     kmCurrent,
+    lastMaintenanceDate,
     lastServiceAt,
     alias,
     notes,
+    status,
+    replacementId,
   );
 
   /// Create a copy of Bus
@@ -250,9 +312,12 @@ abstract class _Bus implements Bus {
     required final String id,
     required final String plate,
     final int kmCurrent,
+    final DateTime? lastMaintenanceDate,
     final DateTime? lastServiceAt,
     final String? alias,
     final String? notes,
+    final String? status,
+    final String? replacementId,
   }) = _$BusImpl;
 
   factory _Bus.fromJson(Map<String, dynamic> json) = _$BusImpl.fromJson;
@@ -262,13 +327,19 @@ abstract class _Bus implements Bus {
   @override
   String get plate;
   @override
-  int get kmCurrent;
+  int get kmCurrent; // fechas que vienen del backend
   @override
-  DateTime? get lastServiceAt;
+  DateTime? get lastMaintenanceDate;
+  @override
+  DateTime? get lastServiceAt; // opcional si tu backend lo usa
   @override
   String? get alias;
   @override
-  String? get notes;
+  String? get notes; // NUEVOS campos del backend
+  @override
+  String? get status;
+  @override
+  String? get replacementId;
 
   /// Create a copy of Bus
   /// with the given fields replaced by the non-null parameter values.

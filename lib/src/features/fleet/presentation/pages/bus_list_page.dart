@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/di/providers.dart';
+import '../../../auth/data/auth_info.dart';
 import '../../domain/entities/bus.dart';
 import '../controllers/bus_list_controller.dart';
 import '../../../settings/presentation/settings_controller.dart';
@@ -18,209 +19,251 @@ class BusListPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(busListControllerProvider);
+    final busesAsync = ref.watch(busListControllerProvider);
+    final rolesAsync = ref.watch(rolesProvider);
+    final areasAsync = ref.watch(areasProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Buses'),
-        actions: [
-          IconButton(
-            tooltip: 'Dashboard',
-            icon: const Icon(Icons.dashboard_outlined),
-            onPressed: () => context.push('/dashboard'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add_task), // Quick add para probar
-            tooltip: 'Quick add',
-            onPressed: () async {
-              final now = DateTime.now();
-              await ref.read(busListControllerProvider.notifier).save(
-                Bus(
-                  id: '',
-                  plate: 'TEST-${now.second}${now.millisecond}',
-                  kmCurrent: 0,
-                  lastServiceAt: now,
-                ),
-              );
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Bus de prueba creado')),
-                );
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.warning_amber),
-            onPressed: () => context.push('/notifications'),
-          ),
-          IconButton(
-            tooltip: 'Órdenes',
-            icon: const Icon(Icons.build_circle_outlined),
-            onPressed: () => context.push('/maintenance'),
-          ),
-          IconButton(
-            tooltip: 'Informe IA',
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: () => context.push('/report'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
+    return rolesAsync.when(
+      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text("Error roles: $e"))),
+      data: (roles) {
+        return areasAsync.when(
+          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
+          error: (e, _) => Scaffold(body: Center(child: Text("Error áreas: $e"))),
+          data: (areas) {
+            final canCreate = Perms.canCreateBus(areas, roles);
+            final canViewOrders = Perms.canViewOrders(areas, roles);
 
-      ),
-      body: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (buses) => buses.isEmpty
-            ? const Center(child: Text('No hay buses. Agrega uno con el botón +'))
-            : ListView.separated(
-          itemCount: buses.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
-          itemBuilder: (_, i) {
-            final b = buses[i];
-            final cfg = ref.watch(configProvider);
-            final state = RulesService.computeState(
-              bus: b,
-              kmThreshold: cfg.kmThreshold,
-              monthsThreshold: cfg.monthsThreshold,
-            );
-            final dueDate = RulesService.predictDueDate(
-              bus: b,
-              kmThreshold: cfg.kmThreshold,
-              monthsThreshold: cfg.monthsThreshold,
-              kmPerDayEstimated: 200, // opcional: valor por defecto hasta tener histórico
-            );
-
-            Color chipColor = switch (state) {
-              BusState.ok => Colors.green,
-              BusState.dueSoon => Colors.orange,
-              BusState.overdue => Colors.red,
-            };
-
-            return ListTile(
-              title: Text(b.plate),
-              subtitle: Text(
-                'Km: ${b.kmCurrent} • Último: ${b.lastServiceAt?.toLocal().toString().split(" ").first ?? "-"}'
-                    '${dueDate != null ? ' • Est.: ${dueDate.toLocal().toString().split(" ").first}' : ''}',
-              ),
-              leading: Chip(
-                backgroundColor: chipColor.withOpacity(0.15),
-                label: Text(
-                  state.label,
-                  style: TextStyle(color: chipColor, fontWeight: FontWeight.bold),
-                ),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-              ),
-              onTap: () async {
-                await showDialog(context: context, builder: (_) => _BusFormDialog(initial: b));
-                await ref.read(busListControllerProvider.notifier).refresh();
-              },
-              trailing: PopupMenuButton<String>(
-                onSelected: (value) async {
-                  final maint = ref.read(maintenanceControllerProvider.notifier);
-                  if (value == 'plan') {
-                    await maint.planFromPrediction(bus: b);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Orden planificada desde predicción')),
-                      );
-                    }
-                  } else if (value == 'viewOrders') {
-                    if (context.mounted) {
-                      await showDialog(
-                        context: context,
-                        builder: (_) => _OrdersDialog(busId: b.id, plate: b.plate),
-                      );
-                    }
-                  } else if (value == 'delete') {
-                    await ref.read(busListControllerProvider.notifier).remove(b.id);
-                  } else if (value == 'decommission') {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Confirmar acción'),
-                        content: Text('¿Deseas marcar el bus ${b.plate} como fuera de servicio?'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-                          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirmar')),
-                        ],
-                      ),
-                    );
-
-                    if (confirmed == true) {
-                      await ref.read(busRepositoryProvider).updateStatus(b.id, "FUERA_SERVICIO");
-                      await ref.read(busListControllerProvider.notifier).refresh();
-
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Bus ${b.plate} marcado como fuera de servicio')),
-                        );
-                      }
-                    }
-                  } else if (value == 'replace') {
-                    final replacementPlate = await showDialog<String>(
-                      context: context,
-                      builder: (_) {
-                        final controller = TextEditingController();
-                        return AlertDialog(
-                          title: const Text('Registrar reemplazo'),
-                          content: TextField(
-                            controller: controller,
-                            decoration: const InputDecoration(labelText: 'Placa del nuevo bus'),
-                          ),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(context, controller.text.trim()),
-                              child: const Text('Guardar'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-
-                    if (replacementPlate != null && replacementPlate.isNotEmpty) {
-                      await ref.read(busRepositoryProvider).updateStatus(
-                        b.id,
-                        "REEMPLAZADO",
-                        replacementId: replacementPlate,
-                      );
-                      await ref.read(busListControllerProvider.notifier).refresh();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Bus ${b.plate} reemplazado por $replacementPlate')),
-                        );
-                      }
-                    }
-                  }
-                },
-                itemBuilder: (ctx) => const [
-                  PopupMenuItem(value: 'plan', child: Text('Agendar por predicción')),
-                  PopupMenuItem(value: 'viewOrders', child: Text('Ver órdenes')),
-                  PopupMenuItem(value: 'delete', child: Text('Eliminar bus')),
-                  PopupMenuItem(value: 'decommission', child: Text('Marcar fuera de servicio')),
-                  PopupMenuItem(value: 'replace', child: Text('Registrar reemplazo')),
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text("Buses"),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.dashboard_outlined),
+                    onPressed: () => context.push("/dashboard"),
+                  ),
                 ],
+              ),
+
+              floatingActionButton: canCreate
+                  ? FloatingActionButton(
+                onPressed: () async {
+                  await showDialog(
+                    context: context,
+                    builder: (_) => const _BusFormDialog(),
+                  );
+                  await ref.read(busListControllerProvider.notifier).refresh();
+                },
+                child: const Icon(Icons.add),
+              )
+                  : null,
+
+              body: busesAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text("Error: $e")),
+                data: (buses) => _BusListView(
+                  buses: buses,
+                  roles: roles,
+                  areas: areas,
+                ),
               ),
             );
           },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await showDialog(
-            context: context,
-            builder: (_) => const _BusFormDialog(),
-          );
-          // asegurar refresh
-          await ref.read(busListControllerProvider.notifier).refresh();
-        },
-        child: const Icon(Icons.add),
-      ),
+        );
+      },
+    );
+  }
+}
+
+class _BusListView extends ConsumerWidget {
+  const _BusListView({required this.buses, required this.roles, required this.areas});
+
+  final List<Bus> buses;
+  final List<String> roles;
+  final List<String> areas;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (buses.isEmpty) {
+      return const Center(child: Text("No hay buses registrados"));
+    }
+
+    return ListView.separated(
+      itemCount: buses.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (_, i) {
+        final bus = buses[i];
+
+        final canEdit = Perms.canEditBus(areas, roles);
+        final canDelete = Perms.canDeleteBus(areas, roles);
+        final canPlan = Perms.canPlanMaintenance(areas, roles);
+        final canViewOrders = Perms.canViewOrders(areas, roles);
+        final canDecommission = Perms.canDecommission(areas, roles);
+        final canReplace = Perms.canReplace(areas, roles);
+
+        return ListTile(
+          title: Text(bus.plate),
+          subtitle: Text("Km: ${bus.kmCurrent}"),
+          onTap: canEdit
+              ? () async {
+            await showDialog(
+              context: context,
+              builder: (_) => _BusFormDialog(initial: bus),
+            );
+            await ref.read(busListControllerProvider.notifier).refresh();
+          }
+              : null,
+          trailing: PopupMenuButton<String>(
+            itemBuilder: (_) {
+              final items = <PopupMenuEntry<String>>[];
+
+              if (canPlan)
+                items.add(const PopupMenuItem(value: "plan", child: Text("Agendar por predicción")));
+
+              if (canViewOrders)
+                items.add(const PopupMenuItem(value: "viewOrders", child: Text("Ver órdenes")));
+
+              if (canDelete)
+                items.add(const PopupMenuItem(value: "delete", child: Text("Eliminar bus")));
+
+              if (canDecommission)
+                items.add(const PopupMenuItem(value: "decommission", child: Text("Marcar fuera de servicio")));
+
+              if (canReplace)
+                items.add(const PopupMenuItem(value: "replace", child: Text("Registrar reemplazo")));
+
+              // fallback si no tiene permisos
+              if (items.isEmpty) {
+                items.add(const PopupMenuItem(
+                  enabled: false,
+                  child: Text("Sin acciones disponibles"),
+                ));
+              }
+
+              return items;
+            },
+            onSelected: (value) async {
+              print("SELECCIONADO: $value");
+
+              final controller = ref.read(busListControllerProvider.notifier);
+
+              switch (value) {
+                case "plan":
+                  await ref.read(maintenanceControllerProvider.notifier)
+                      .planFromPrediction(bus: bus);
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Orden planificada desde predicción')),
+                    );
+                  }
+                  break;
+
+                case "viewOrders":
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (_) => _OrdersDialog(busId: bus.id, plate: bus.plate),
+                    );
+                  }
+                  break;
+
+                case "delete":
+                  await controller.remove(bus.id);
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Bus ${bus.plate} eliminado')),
+                    );
+                  }
+                  break;
+
+                case "decommission":
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Confirmar acción'),
+                      content: Text('¿Deseas marcar el bus ${bus.plate} como fuera de servicio?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancelar'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Confirmar'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirmed == true) {
+                    await ref.read(busRepositoryProvider)
+                        .updateStatus(bus.id, "FUERA_SERVICIO");
+                    await ref.read(busListControllerProvider.notifier).refresh();
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Bus ${bus.plate} marcado como fuera de servicio')),
+                      );
+                    }
+                  }
+                  break;
+
+                case "replace":
+                  final replacementPlate = await showDialog<String>(
+                    context: context,
+                    builder: (_) {
+                      final controller = TextEditingController();
+                      return AlertDialog(
+                        title: const Text('Registrar reemplazo'),
+                        content: TextField(
+                          controller: controller,
+                          decoration: const InputDecoration(labelText: 'Placa del nuevo bus'),
+                        ),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(context, controller.text.trim()),
+                            child: const Text('Guardar'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (replacementPlate != null && replacementPlate.isNotEmpty) {
+                    // 1) Crear el nuevo bus
+                    final newBus = await ref.read(busRepositoryProvider).upsert(
+                      Bus(
+                        id: '',
+                        plate: replacementPlate,
+                        kmCurrent: 0,
+                        lastServiceAt: DateTime.now(),
+                      ),
+                    );
+
+                    // 2) Actualizar el bus original como reemplazado
+                    await ref.read(busRepositoryProvider).updateStatus(
+                      bus.id,
+                      "REEMPLAZADO",
+                      replacementId: newBus.id,
+                    );
+
+                    await ref.read(busListControllerProvider.notifier).refresh();
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Bus ${bus.plate} reemplazado por ${newBus.plate}')),
+                      );
+                    }
+                  }
+                  break;
+              }
+            },
+          ),
+        );
+      },
     );
   }
 }
