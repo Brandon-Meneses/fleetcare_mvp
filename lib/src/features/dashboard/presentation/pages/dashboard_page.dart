@@ -70,7 +70,7 @@ Widget _DashboardContent(
             onPressed: () => context.push('/maintenance'),
           ),
 
-        if (roles.contains("ADMIN") || areas.contains("FINANCE"))
+        //if (roles.contains("ADMIN") || areas.contains("FINANCE"))
           IconButton(
             tooltip: 'Informe IA',
             icon: const Icon(Icons.picture_as_pdf_outlined),

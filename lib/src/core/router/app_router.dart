@@ -28,7 +28,7 @@ Future<bool> canAccess(String route) async {
   return switch (route) {
     "/buslist"       => areas.contains("MAINTENANCE"),
     "/maintenance"   => areas.contains("OPERATIONS"),
-    "/report"        => areas.contains("FINANCE"),
+    "/report"        => true,
     "/settings"      => false, // Solo admin
     "/notifications" => true, // todos
     "/dashboard"     => true, // todos

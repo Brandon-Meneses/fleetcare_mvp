@@ -56,4 +56,14 @@ class AuthState {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString("jwtToken");
   }
+
+  static List<String> lastAreas = [];
+
+  static Future<void> load() async {
+    lastAreas = await getAreas();
+  }
+
+  static List<String> getAreasSync() {
+    return lastAreas;
+  }
 }

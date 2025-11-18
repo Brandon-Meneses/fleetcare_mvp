@@ -60,9 +60,10 @@ class ReportService {
     // --- ESTA ES LA FORMA CORRECTA ---
     final payload = {
       'fleet': buses.map((b) => {
+        'id': b.id,
         'plate': b.plate,
         'kmCurrent': b.kmCurrent,
-        'lastServiceAt': b.lastMaintenanceDate?.toIso8601String().split('T').first
+        'lastServiceAt': b.lastMaintenanceDate?.toIso8601String().split('T').first,
       }).toList(),
       'config': {
         'kmThreshold': config.kmThreshold,

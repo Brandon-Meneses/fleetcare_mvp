@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/auth/data/auth_state.dart';
 import '../../features/fleet/domain/repositories/bus_repository.dart';
 import '../../features/maintenance/domain/repositories/maintenance_repository.dart';
 import '../../features/maintenance/data/api_maintenance_repository.dart';
@@ -18,3 +19,8 @@ final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
   return NotificationRepository();
 });
+
+final userAreasProvider = FutureProvider<List<String>>((ref) async {
+  return await AuthState.getAreas();
+});
+
