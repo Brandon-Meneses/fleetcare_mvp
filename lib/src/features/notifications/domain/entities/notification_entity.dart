@@ -35,3 +35,33 @@ class NotificationEntity {
     "createdAt": createdAt.toIso8601String(),
   };
 }
+class PageNotifications {
+  final List<NotificationEntity> items;
+  final int page;
+  final int size;
+  final int totalItems;
+  final int totalPages;
+  final bool hasNext;
+
+  PageNotifications({
+    required this.items,
+    required this.page,
+    required this.size,
+    required this.totalItems,
+    required this.totalPages,
+    required this.hasNext,
+  });
+
+  factory PageNotifications.fromJson(Map<String, dynamic> json) {
+    return PageNotifications(
+      items: (json["items"] as List)
+          .map((e) => NotificationEntity.fromJson(e))
+          .toList(),
+      page: json["page"],
+      size: json["size"],
+      totalItems: json["totalItems"],
+      totalPages: json["totalPages"],
+      hasNext: json["hasNext"],
+    );
+  }
+}

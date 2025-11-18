@@ -127,9 +127,9 @@ Widget _DashboardContent(
 
                   if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
                     _QuickChip(
-                      label: 'Alertas',
+                      label: 'Notificaciones',
                       icon: Icons.warning_amber_rounded,
-                      onTap: () => context.push('/alerts'),
+                      onTap: () => context.push('/notifications'),
                     ),
 
                   if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))

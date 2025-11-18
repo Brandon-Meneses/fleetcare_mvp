@@ -16,26 +16,43 @@ class NotificationRepository {
     };
   }
 
-  /// 🔹 Lista de notificaciones no leídas
-  Future<List<NotificationEntity>> listUnread() async {
-    final res = await http.get(Uri.parse("$baseUrl/notifications"), headers: await _headers());
+  /// 🔹 Lista paginada de notificaciones no leídas
+  Future<PageNotifications> listUnread({int page = 0, int size = 20}) async {
+    final res = await http.get(
+      Uri.parse("$baseUrl/notifications?page=$page&size=$size"),
+      headers: await _headers(),
+    );
+
     if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as List;
-      return data.map((e) => NotificationEntity.fromJson(e)).toList();
+      final json = jsonDecode(res.body);
+      return PageNotifications.fromJson(json);
     }
-    throw Exception("Error al listar notificaciones (${res.statusCode}): ${res.body}");
+
+    throw Exception("Error al listar notificaciones (${res.statusCode})");
   }
 
-  /// 🔹 Cantidad de no leídas
+  /// 🔹 Cantidad de NO leídas
   Future<int> unreadCount() async {
-    final res = await http.get(Uri.parse("$baseUrl/notifications/count"), headers: await _headers());
-    if (res.statusCode == 200) return int.tryParse(res.body) ?? 0;
+    final res = await http.get(
+      Uri.parse("$baseUrl/notifications/count"),
+      headers: await _headers(),
+    );
+
+    if (res.statusCode == 200) {
+      final json = jsonDecode(res.body);
+      return json["count"] ?? 0;
+    }
+
     throw Exception("Error al obtener contador (${res.statusCode})");
   }
 
   /// 🔹 Marcar como leída
   Future<void> markAsRead(int id) async {
-    final res = await http.patch(Uri.parse("$baseUrl/notifications/$id/read"), headers: await _headers());
+    final res = await http.patch(
+      Uri.parse("$baseUrl/notifications/$id/read"),
+      headers: await _headers(),
+    );
+
     if (res.statusCode != 200 && res.statusCode != 204) {
       throw Exception("Error al marcar como leída (${res.statusCode})");
     }

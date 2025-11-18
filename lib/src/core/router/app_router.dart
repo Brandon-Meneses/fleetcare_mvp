@@ -1,3 +1,4 @@
+import 'package:fleetcare_mvp/src/features/notifications/presentation/pages/notifications_page.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,7 +30,7 @@ Future<bool> canAccess(String route) async {
     "/maintenance"   => areas.contains("OPERATIONS"),
     "/report"        => areas.contains("FINANCE"),
     "/settings"      => false, // Solo admin
-    "/alerts"        => true, // todos
+    "/notifications" => true, // todos
     "/dashboard"     => true, // todos
     _                => false,
   };
@@ -62,7 +63,7 @@ final appRouter = GoRouter(
     GoRoute(path: "/dashboard", builder: (_, __) => const DashboardPage()),
     GoRoute(path: "/buslist", builder: (_, __) => const BusListPage()),
     GoRoute(path: "/settings", builder: (_, __) => const SettingsPage()),
-    GoRoute(path: "/alerts", builder: (_, __) => const AlertsPage()),
+    GoRoute(path: "/notifications", builder: (_, __) => const NotificationsPage()),
     GoRoute(path: "/maintenance", builder: (_, __) => const MaintenancePage()),
     GoRoute(path: "/report", builder: (_, __) => const ReportPage()),
   ],
