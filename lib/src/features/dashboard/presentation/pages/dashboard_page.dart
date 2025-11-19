@@ -83,6 +83,12 @@ Widget _DashboardContent(
             icon: const Icon(Icons.settings),
             onPressed: () => context.push('/settings'),
           ),
+        if (roles.contains("ADMIN"))
+          IconButton(
+            tooltip: 'Crear usuario',
+            icon: const Icon(Icons.person_add),
+            onPressed: () => context.push('/admin/users'),
+          ),
 
         IconButton(
           tooltip: "Cerrar sesión",
@@ -125,6 +131,7 @@ Widget _DashboardContent(
                       onTap: () => context.push('/buslist'),
                     ),
 
+
                   if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
                     _QuickChip(
                       label: 'Notificaciones',
@@ -132,7 +139,7 @@ Widget _DashboardContent(
                       onTap: () => context.push('/notifications'),
                     ),
 
-                  if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
+                  if (roles.contains("ADMIN") || areas.contains("OPERATIONS") || areas.contains("MAINTENANCE"))
                     _QuickChip(
                       label: 'Órdenes',
                       icon: Icons.build_circle_outlined,
@@ -144,6 +151,12 @@ Widget _DashboardContent(
                       label: 'Config',
                       icon: Icons.settings,
                       onTap: () => context.push('/settings'),
+                    ),
+                  if (roles.contains("ADMIN"))
+                    _QuickChip(
+                      label: 'Crear usuario',
+                      icon: Icons.person_add,
+                      onTap: () => context.push('/admin/users'),
                     ),
                 ],
               ),

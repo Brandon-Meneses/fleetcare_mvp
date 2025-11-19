@@ -11,6 +11,7 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/reports/presentation/pages/report_page.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/data/auth_state.dart';
+import '../../features/admin/presentation/CreateUserPage.dart';
 
 Future<bool> isLoggedIn() async {
   final prefs = await SharedPreferences.getInstance();
@@ -66,5 +67,7 @@ final appRouter = GoRouter(
     GoRoute(path: "/notifications", builder: (_, __) => const NotificationsPage()),
     GoRoute(path: "/maintenance", builder: (_, __) => const MaintenancePage()),
     GoRoute(path: "/report", builder: (_, __) => const ReportPage()),
+    GoRoute(path: "/admin/users", builder: (_, __) => const CreateUserPage(),
+    ),
   ],
 );
