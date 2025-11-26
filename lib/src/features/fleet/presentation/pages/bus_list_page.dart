@@ -123,134 +123,194 @@ class _BusListView extends ConsumerWidget {
             // dentro de itemBuilder: (_, i) {
             final bus = buses[i];
 
-            return ListTile(
-              title: Row(
-                children: [
-                  Text(bus.plate),
-                  const SizedBox(width: 12),
-                  Chip(
-                    label: Text(
-                      bus.status ?? '-',
-                      style: TextStyle(
-                        color: _statusColor(bus.status ?? ''),
-                        fontWeight: FontWeight.bold,
+            return Card(
+              elevation: 2,
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () async {
+                  if (bus.status == "FUERA_SERVICIO" || bus.status == "REEMPLAZADO") return;
+                  await showDialog(
+                    context: context,
+                    builder: (_) => _BusFormDialog(initial: bus),
+                  );
+                  await ref.read(busListControllerProvider.notifier).refresh();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+
+                      // ICONO PRINCIPAL
+                      CircleAvatar(
+                        radius: 26,
+                        backgroundColor: _statusColor(bus.status ?? '').withOpacity(0.12),
+                        child: Icon(
+                          Icons.directions_bus_filled,
+                          color: _statusColor(bus.status ?? ''),
+                          size: 30,
+                        ),
                       ),
-                    ),
-                    backgroundColor: _statusColor(bus.status ?? '').withOpacity(0.15),
+
+                      const SizedBox(width: 16),
+
+                      // INFO PRINCIPAL
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+
+                            // PLACA & ESTADO
+                            Row(
+                              children: [
+                                Text(
+                                  bus.plate,
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _statusColor(bus.status ?? '').withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    bus.status ?? "-",
+                                    style: TextStyle(
+                                      color: _statusColor(bus.status ?? ''),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 6),
+
+                            // INFO DETALLADA
+                            Row(
+                              children: [
+                                const Icon(Icons.speed, size: 16),
+                                const SizedBox(width: 4),
+                                Text("Km: ${bus.kmCurrent}"),
+
+                                const SizedBox(width: 16),
+                                const Icon(Icons.build_circle, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                  bus.lastMaintenanceDate == null
+                                      ? "Último: -"
+                                      : "Último: ${bus.lastMaintenanceDate!.toLocal().toString().split(' ').first}",
+                                ),
+
+                                const SizedBox(width: 16),
+                                const Icon(Icons.event, size: 16),
+                                const SizedBox(width: 4),
+                                Text(
+                                  bus.nextMaintenanceDate == null
+                                      ? "Próx.: -"
+                                      : "Próx.: ${bus.nextMaintenanceDate!.toLocal().toString().split(' ').first}",
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // BOTÓN DE MENÚ
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert),
+                        onSelected: (value) async {
+                          final repo = ref.read(busRepositoryProvider);
+                          final maint = ref.read(maintenanceControllerProvider.notifier);
+
+                          switch (value) {
+                            case "plan":
+                              if (["OK", "PROXIMO", "VENCIDO"].contains(bus.status)) {
+                                await maint.planFromPrediction(bus: bus);
+                              }
+                              break;
+
+                            case "viewOrders":
+                              showDialog(
+                                context: context,
+                                builder: (_) => _OrdersDialog(busId: bus.id, plate: bus.plate),
+                              );
+                              break;
+
+                            case "delete":
+                              await ref.read(busListControllerProvider.notifier).remove(bus.id);
+                              break;
+
+                            case "decommission":
+                              final confirmed = await _confirm(
+                                context,
+                                '¿Marcar bus ${bus.plate} como FUERA DE SERVICIO?',
+                              );
+                              if (confirmed) {
+                                await repo.updateStatus(bus.id, "FUERA_SERVICIO");
+                                await ref.read(busListControllerProvider.notifier).refresh();
+                              }
+                              break;
+
+                            case "enable":
+                              final confirmed = await _confirm(
+                                  context,
+                                  '¿Habilitar nuevamente el bus ${bus.plate}?');
+                              if (confirmed) {
+                                await repo.updateStatus(bus.id, "OK");
+                                await ref.read(busListControllerProvider.notifier).refresh();
+                              }
+                              break;
+
+                            case "replace":
+                              final r = await _askReplacementPlate(context);
+                              if (r != null) {
+                                await repo.updateStatus(bus.id, "REEMPLAZADO",
+                                    replacementId: r);
+                                await ref.read(busListControllerProvider.notifier).refresh();
+                              }
+                              break;
+                          }
+                        },
+
+                        itemBuilder: (_) {
+                          final items = <PopupMenuEntry<String>>[];
+                          final isActive = ["OK", "PROXIMO", "VENCIDO"].contains(bus.status);
+
+                          if (isActive) {
+                            items.add(const PopupMenuItem(value: 'plan', child: Text('Agendar por predicción')));
+                            items.add(const PopupMenuItem(value: 'viewOrders', child: Text('Ver órdenes')));
+                            items.add(const PopupMenuItem(value: 'delete', child: Text('Eliminar bus')));
+                            items.add(const PopupMenuItem(value: 'decommission', child: Text('Marcar fuera de servicio')));
+                            items.add(const PopupMenuItem(value: 'replace', child: Text('Registrar reemplazo')));
+                          }
+
+                          if (bus.status == "FUERA_SERVICIO") {
+                            items.add(const PopupMenuItem(value: 'enable', child: Text('Habilitar bus')));
+                          }
+
+                          if (bus.status == "REEMPLAZADO") {
+                            items.add(const PopupMenuItem(
+                              enabled: false,
+                              value: 'none',
+                              child: Text('Sin acciones disponibles'),
+                            ));
+                          }
+
+                          return items;
+                        },
+                      ),
+                    ],
                   ),
-                ],
-              ),
-
-              subtitle: Text(
-                [
-                  'Km: ${bus.kmCurrent}',
-                  'Último: ${bus.lastMaintenanceDate == null
-                      ? "-"
-                      : bus.lastMaintenanceDate!.toLocal().toString().split(" ").first}',
-                  'Próx.: ${bus.nextMaintenanceDate == null
-                      ? "-"
-                      : bus.nextMaintenanceDate!.toLocal().toString().split(" ").first}',
-                ].join(' • '),
-              ),
-
-              onTap: () async {
-                if (bus.status == "FUERA_SERVICIO" || bus.status == "REEMPLAZADO") return;
-
-                await showDialog(
-                  context: context,
-                  builder: (_) => _BusFormDialog(initial: bus),
-                );
-
-                await ref.read(busListControllerProvider.notifier).refresh();
-              },
-
-              trailing: PopupMenuButton<String>(
-                enabled: bus.status != "REEMPLAZADO",
-                onSelected: (value) async {
-                  final repo = ref.read(busRepositoryProvider);
-                  final maint = ref.read(maintenanceControllerProvider.notifier);
-
-                  switch (value) {
-                    case "plan":
-                      if (["OK", "PROXIMO", "VENCIDO"].contains(bus.status)) {
-                        await maint.planFromPrediction(bus: bus);
-                      }
-                      break;
-
-                    case "viewOrders":
-                      showDialog(
-                        context: context,
-                        builder: (_) => _OrdersDialog(busId: bus.id, plate: bus.plate),
-                      );
-                      break;
-
-                    case "delete":
-                      await ref.read(busListControllerProvider.notifier).remove(bus.id);
-                      break;
-
-                    case "decommission":
-                      final confirmed = await _confirm(
-                        context,
-                        '¿Deseas marcar el bus ${bus.plate} como FUERA DE SERVICIO?',
-                      );
-                      if (confirmed) {
-                        await repo.updateStatus(bus.id, "FUERA_SERVICIO");
-                        await ref.read(busListControllerProvider.notifier).refresh();
-                      }
-                      break;
-
-                    case "enable":
-                      final confirmed = await _confirm(
-                        context,
-                        '¿Deseas habilitar nuevamente el bus ${bus.plate}?',
-                      );
-                      if (confirmed) {
-                        await repo.updateStatus(bus.id, "OK");
-                        await ref.read(busListControllerProvider.notifier).refresh();
-                      }
-                      break;
-
-                    case "replace":
-                      final replacement = await _askReplacementPlate(context);
-                      if (replacement != null) {
-                        await repo.updateStatus(
-                          bus.id,
-                          "REEMPLAZADO",
-                          replacementId: replacement,
-                        );
-                        await ref.read(busListControllerProvider.notifier).refresh();
-                      }
-                      break;
-                  }
-                },
-
-                itemBuilder: (_) {
-                  final items = <PopupMenuEntry<String>>[];
-
-                  final isActive = ["OK", "PROXIMO", "VENCIDO"].contains(bus.status);
-
-                  if (isActive) {
-                    items.add(const PopupMenuItem(value: 'plan', child: Text('Agendar por predicción')));
-                    items.add(const PopupMenuItem(value: 'viewOrders', child: Text('Ver órdenes')));
-                    items.add(const PopupMenuItem(value: 'delete', child: Text('Eliminar bus')));
-                    items.add(const PopupMenuItem(value: 'decommission', child: Text('Marcar fuera de servicio')));
-                    items.add(const PopupMenuItem(value: 'replace', child: Text('Registrar reemplazo')));
-                  }
-
-                  if (bus.status == "FUERA_SERVICIO") {
-                    items.add(const PopupMenuItem(value: 'enable', child: Text('Habilitar bus')));
-                  }
-
-                  if (bus.status == "REEMPLAZADO") {
-                    items.add(const PopupMenuItem(
-                      enabled: false,
-                      value: 'none',
-                      child: Text('Sin acciones disponibles'),
-                    ));
-                  }
-
-                  return items;
-                },
+                ),
               ),
             );
           },
@@ -506,6 +566,47 @@ class _BusFormDialogState extends ConsumerState<_BusFormDialog> {
                             validator: (v) =>
                             v == null ? "Selecciona un modelo" : null,
                           ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // SELECTOR DE FECHA (último mantenimiento)
+                Card(
+                  elevation: 0,
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_today, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _lastServiceAt == null
+                                ? "Último mantenimiento: -"
+                                : "Último mantenimiento: ${_lastServiceAt!.toLocal().toString().split(' ').first}",
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: _lastServiceAt ?? DateTime.now(),
+                              firstDate: DateTime(2010),
+                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                            );
+
+                            if (picked != null) {
+                              setState(() => _lastServiceAt = picked);
+                            }
+                          },
+                          child: const Text("Cambiar"),
+                        ),
                       ],
                     ),
                   ),
