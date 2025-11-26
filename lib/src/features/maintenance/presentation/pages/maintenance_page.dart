@@ -101,30 +101,41 @@ class _MaintenancePageState extends ConsumerState<MaintenancePage> {
 
 class _FilterBar extends StatelessWidget {
   const _FilterBar({required this.current, required this.onChanged});
+
   final _Filter current;
   final ValueChanged<_Filter> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Wrap(
-        spacing: 8,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
         children: [
-          _chip('Todas', _Filter.all),
-          _chip('Planificadas', _Filter.planned),
-          _chip('Abiertas', _Filter.open),
-          _chip('Cerradas', _Filter.closed),
+          _pill(context, "Todas", Icons.list_alt, _Filter.all),
+          _pill(context, "Planificadas", Icons.schedule, _Filter.planned),
+          _pill(context, "Abiertas", Icons.play_arrow, _Filter.open),
+          _pill(context, "Cerradas", Icons.check_circle, _Filter.closed),
         ],
       ),
     );
   }
 
-  Widget _chip(String label, _Filter value) => ChoiceChip(
-    label: Text(label),
-    selected: current == value,
-    onSelected: (_) => onChanged(value),
-  );
+  Widget _pill(BuildContext context, String label, IconData icon, _Filter value) {
+    final isSelected = current == value;
+    final color = Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        selectedColor: color.withOpacity(0.18),
+        avatar: Icon(icon, size: 18, color: isSelected ? color : null),
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (_) => onChanged(value),
+      ),
+    );
+  }
 }
 
 class _OrderTile extends ConsumerWidget {
@@ -134,77 +145,451 @@ class _OrderTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final maint = ref.read(maintenanceControllerProvider.notifier);
     final busRepo = ref.read(busRepositoryProvider);
+    final maint = ref.read(maintenanceControllerProvider.notifier);
+
+    final color = _statusColor(order.status);
+    final icon = _statusIcon(order.status);
+    final typeIcon = _typeIcon(order.type);
 
     return FutureBuilder(
       future: busRepo.findById(order.busId),
       builder: (context, snap) {
         final plate = snap.data?.plate ?? order.busId;
 
-        final subtitles = <String>[];
-        if (order.plannedAt != null) subtitles.add("Planificada: ${_fmt(order.plannedAt)}");
-        if (order.openedAt != null) subtitles.add("Abierta: ${_fmt(order.openedAt)}");
-        if (order.closedAt != null) subtitles.add("Cerrada: ${_fmt(order.closedAt)}");
-        if ((order.notes ?? "").isNotEmpty) subtitles.add("Notas: ${order.notes}");
+        return Card(
+          elevation: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) => _OrderDetailDialog(order: order, plate: plate),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
 
-        return ListTile(
-          title: Text("${order.type.name.toUpperCase()} • ${order.status.label}"),
-          subtitle: Text("Bus: $plate  •  ${subtitles.join("  •  ")}"),
-          trailing: canManage
-              ? Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (order.status == MaintenanceStatus.planned)
-                IconButton(
-                  tooltip: "Abrir orden",
-                  icon: const Icon(Icons.play_arrow),
-                  onPressed: () async {
-                    await maint.openOrder(order);
-                    ref.refresh(maintenanceControllerProvider); // 👈 refresh UI
-                  },
-                ),
-              if (order.status == MaintenanceStatus.open)
-                IconButton(
-                  tooltip: "Cerrar orden",
-                  icon: const Icon(Icons.check),
-                  onPressed: () async {
-                    final notes = await showDialog<String>(
-                      context: context,
-                      builder: (_) => const _CloseNotesDialog(),
-                    );
-                    await maint.closeOrder(order, notes: notes);
-                    ref.refresh(maintenanceControllerProvider);
-                  },
-                ),
-            ],
-          )
-              : null,
+                  // --- CABECERA ---
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: color.withOpacity(0.15),
+                        child: Icon(icon, color: color, size: 26),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "${order.type.name.toUpperCase()} • ${order.status.label}",
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // --- DATOS ---
+                  Row(
+                    children: [
+                      Icon(typeIcon, size: 18),
+                      const SizedBox(width: 6),
+                      Text("Bus: $plate"),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  ..._buildDates(order),
+
+                  if ((order.notes ?? "").isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.note_alt_outlined, size: 18),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(order.notes!)),
+                      ],
+                    ),
+                  ],
+
+                  const SizedBox(height: 12),
+
+                  // --- ACCIONES ---
+                  if (canManage)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (order.status == MaintenanceStatus.planned)
+                          FilledButton.icon(
+                            icon: const Icon(Icons.play_arrow),
+                            label: const Text("Abrir"),
+                            onPressed: () async {
+                              await maint.openOrder(order);
+                              ref.refresh(maintenanceControllerProvider);
+                            },
+                          ),
+
+                        if (order.status == MaintenanceStatus.open)
+                          FilledButton.icon(
+                            icon: const Icon(Icons.check),
+                            label: const Text("Cerrar"),
+                            onPressed: () async {
+                              final notes = await showDialog<String>(
+                                context: context,
+                                builder: (_) => const _CloseNotesDialog(),
+                              );
+                              await maint.closeOrder(order, notes: notes);
+                              ref.refresh(maintenanceControllerProvider);
+                            },
+                          ),
+                      ],
+                    )
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
   }
 
-  String _fmt(DateTime? d) => d == null ? "-" : d.toLocal().toString().split(" ").first;
+  // ---- Helpers visuales ----
+
+  List<Widget> _buildDates(MaintenanceOrder o) {
+    final widgets = <Widget>[];
+
+    if (o.plannedAt != null)
+      widgets.add(_date("Planificada", Icons.calendar_month, o.plannedAt!));
+
+    if (o.openedAt != null)
+      widgets.add(_date("Abierta", Icons.play_circle_fill, o.openedAt!));
+
+    if (o.closedAt != null)
+      widgets.add(_date("Cerrada", Icons.check_circle, o.closedAt!));
+
+    return widgets;
+  }
+
+  Widget _date(String label, IconData icon, DateTime date) {
+    final formatted = date.toLocal().toString().split(" ").first;
+    return Row(
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 6),
+        Text("$label: $formatted"),
+      ],
+    );
+  }
+
+  IconData _statusIcon(MaintenanceStatus s) {
+    return switch (s) {
+      MaintenanceStatus.planned => Icons.schedule,
+      MaintenanceStatus.open => Icons.play_arrow,
+      MaintenanceStatus.closed => Icons.check_circle,
+    };
+  }
+
+  IconData _typeIcon(MaintenanceType t) {
+    return switch (t) {
+      MaintenanceType.preventive => Icons.construction,
+      MaintenanceType.corrective => Icons.build,
+    };
+  }
+
+  Color _statusColor(MaintenanceStatus s) {
+    return switch (s) {
+      MaintenanceStatus.planned => Colors.blue,
+      MaintenanceStatus.open => Colors.orange,
+      MaintenanceStatus.closed => Colors.green,
+    };
+  }
+}
+
+class _OrderDetailDialog extends StatelessWidget {
+  const _OrderDetailDialog({
+    super.key,
+    required this.order,
+    required this.plate,
+  });
+
+  final MaintenanceOrder order;
+  final String plate;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _statusColor(order.status);
+    final statusIcon = _statusIcon(order.status);
+    final typeIcon = _typeIcon(order.type);
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              // HEADER
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 26,
+                    backgroundColor: statusColor.withOpacity(0.15),
+                    child: Icon(statusIcon, color: statusColor, size: 30),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          order.type == MaintenanceType.preventive
+                              ? "Mantenimiento preventivo"
+                              : "Mantenimiento correctivo",
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: statusColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                order.status.label, // PLANIFICADA / ABIERTA / CERRADA
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Row(
+                              children: [
+                                Icon(typeIcon, size: 16),
+                                const SizedBox(width: 4),
+                                Text("Bus: $plate"),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // FECHAS
+              _infoRow(
+                context,
+                icon: Icons.calendar_month,
+                label: "Planificada",
+                value: _fmt(order.plannedAt),
+              ),
+              _infoRow(
+                context,
+                icon: Icons.play_circle_outline,
+                label: "Abierta",
+                value: _fmt(order.openedAt),
+              ),
+              _infoRow(
+                context,
+                icon: Icons.check_circle_outline,
+                label: "Cerrada",
+                value: _fmt(order.closedAt),
+              ),
+
+              const SizedBox(height: 16),
+
+              // NOTAS
+              if ((order.notes ?? "").isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Notas",
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceVariant
+                            .withOpacity(0.4),
+                      ),
+                      child: Text(order.notes!),
+                    ),
+                  ],
+                ),
+
+              const SizedBox(height: 24),
+
+              // BOTÓN CERRAR
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cerrar"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---- Helpers visuales (solo para este diálogo) ----
+
+  static String _fmt(DateTime? d) {
+    if (d == null) return "-";
+    return d.toLocal().toString().split(" ").first;
+  }
+
+  static Color _statusColor(MaintenanceStatus s) {
+    switch (s) {
+      case MaintenanceStatus.planned:
+        return Colors.blue;
+      case MaintenanceStatus.open:
+        return Colors.orange;
+      case MaintenanceStatus.closed:
+        return Colors.green;
+    }
+  }
+
+  static IconData _statusIcon(MaintenanceStatus s) {
+    switch (s) {
+      case MaintenanceStatus.planned:
+        return Icons.schedule;
+      case MaintenanceStatus.open:
+        return Icons.play_arrow;
+      case MaintenanceStatus.closed:
+        return Icons.check_circle;
+    }
+  }
+
+  static IconData _typeIcon(MaintenanceType t) {
+    switch (t) {
+      case MaintenanceType.preventive:
+        return Icons.construction;
+      case MaintenanceType.corrective:
+        return Icons.build;
+    }
+  }
+
+  Widget _infoRow(
+      BuildContext context, {
+        required IconData icon,
+        required String label,
+        required String value,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            "$label:",
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _CloseNotesDialog extends StatefulWidget {
   const _CloseNotesDialog({super.key});
+
   @override
   State<_CloseNotesDialog> createState() => _CloseNotesDialogState();
 }
 
 class _CloseNotesDialogState extends State<_CloseNotesDialog> {
   final _c = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Notas de cierre'),
-      content: TextField(controller: _c, decoration: const InputDecoration(hintText: 'Opcional')),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-        FilledButton(onPressed: () => Navigator.pop(context, _c.text.trim()), child: const Text('Guardar')),
-      ],
+    return Dialog(
+      insetPadding: const EdgeInsets.all(20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.check_circle, size: 44,
+                color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 16),
+            Text(
+              "Cerrar orden",
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _c,
+              decoration: const InputDecoration(
+                labelText: 'Notas (opcional)',
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 20),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text("Cancelar")),
+                const SizedBox(width: 12),
+                FilledButton(
+                  onPressed: () =>
+                      Navigator.pop(context, _c.text.trim()),
+                  child: const Text("Guardar"),
+                )
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -218,72 +603,121 @@ class _NewOrderDialog extends ConsumerStatefulWidget {
 
 class _NewOrderDialogState extends ConsumerState<_NewOrderDialog> {
   MaintenanceType _type = MaintenanceType.preventive;
-  final _notesCtrl = TextEditingController();
   String? _busId;
+  final _notesCtrl = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
     final buses = ref.watch(busListControllerProvider).value ?? [];
 
-    return AlertDialog(
-      title: const Text("Nueva orden"),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(labelText: "Bus"),
-            value: _busId,
-            items: buses
-                .map((b) => DropdownMenuItem(
-              value: b.id,
-              child: Text("${b.plate}  (km: ${b.kmCurrent})"),
-            ))
-                .toList(),
-            onChanged: (v) => setState(() => _busId = v),
-            validator: (v) => v == null ? "Seleccione un bus" : null,
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<MaintenanceType>(
-            value: _type,
-            decoration: const InputDecoration(labelText: "Tipo"),
-            items: MaintenanceType.values
-                .map((t) =>
-                DropdownMenuItem(value: t, child: Text(t.name.toUpperCase())))
-                .toList(),
-            onChanged: (v) => setState(() => _type = v!),
-          ),
-          TextField(
-            controller: _notesCtrl,
-            decoration: const InputDecoration(labelText: "Notas"),
-          )
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-        FilledButton(
-          onPressed: () {
-            if (_busId == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Seleccione un bus")),
-              );
-              return;
-            }
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.build_circle,
+                  size: 42,
+                  color: Theme.of(context).colorScheme.primary),
+              const SizedBox(height: 12),
 
-            Navigator.pop(
-              context,
-              MaintenanceOrder(
-                id: "",
-                busId: _busId!,
-                type: _type,
-                status: MaintenanceStatus.planned,
-                plannedAt: DateTime.now(),
-                notes: _notesCtrl.text.trim(),
+              Text(
+                "Crear orden de mantenimiento",
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-            );
-          },
-          child: const Text("Crear"),
+
+              const SizedBox(height: 20),
+
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(
+                  labelText: "Bus",
+                  prefixIcon: Icon(Icons.directions_bus),
+                ),
+                value: _busId,
+                items: buses
+                    .map((b) => DropdownMenuItem(
+                  value: b.id,
+                  child: Text("${b.plate}  (km: ${b.kmCurrent})"),
+                ))
+                    .toList(),
+                onChanged: (v) => setState(() => _busId = v),
+                validator: (v) => v == null ? "Seleccione un bus" : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<MaintenanceType>(
+                decoration: const InputDecoration(
+                  labelText: "Tipo",
+                  prefixIcon: Icon(Icons.category),
+                ),
+                value: _type,
+                items: MaintenanceType.values
+                    .map((t) => DropdownMenuItem(
+                  value: t,
+                  child: Text(
+                    t == MaintenanceType.preventive
+                        ? "Preventivo"
+                        : "Correctivo",
+                  ),
+                ))
+                    .toList(),
+                onChanged: (v) => setState(() => _type = v!),
+              ),
+
+              const SizedBox(height: 16),
+
+              TextField(
+                controller: _notesCtrl,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: "Notas",
+                  prefixIcon: Icon(Icons.note_alt_outlined),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancelar")),
+                  const SizedBox(width: 12),
+                  FilledButton(
+                    onPressed: () {
+                      if (_busId == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text("Seleccione un bus")),
+                        );
+                        return;
+                      }
+
+                      Navigator.pop(
+                        context,
+                        MaintenanceOrder(
+                          id: "",
+                          busId: _busId!,
+                          type: _type,
+                          status: MaintenanceStatus.planned,
+                          plannedAt: DateTime.now(),
+                          notes: _notesCtrl.text.trim(),
+                        ),
+                      );
+                    },
+                    child: const Text("Crear"),
+                  ),
+                ],
+              )
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 }
