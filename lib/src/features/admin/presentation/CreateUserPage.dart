@@ -18,8 +18,22 @@ class _CreateUserPageState extends ConsumerState<CreateUserPage> {
   String role = "USER";
   String? area;
 
-  final areasList = ["MAINTENANCE", "OPERATIONS", "FINANCE", "COMMERCIAL"];
+  // Valores REALES → backend
   final rolesList = ["USER", "ADMIN"];
+  final areasList = ["MAINTENANCE", "OPERATIONS", "FINANCE", "COMMERCIAL"];
+
+  // Etiquetas en español → UI
+  final roleLabels = {
+    "USER": "Usuario",
+    "ADMIN": "Administrador",
+  };
+
+  final areaLabels = {
+    "MAINTENANCE": "Mantenimiento",
+    "OPERATIONS": "Operaciones",
+    "FINANCE": "Finanzas",
+    "COMMERCIAL": "Comercial",
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +61,10 @@ class _CreateUserPageState extends ConsumerState<CreateUserPage> {
                 value: role,
                 decoration: const InputDecoration(labelText: "Rol"),
                 items: rolesList
-                    .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                    .map((r) => DropdownMenuItem(
+                  value: r,
+                  child: Text(roleLabels[r] ?? r),
+                ))
                     .toList(),
                 onChanged: (v) {
                   setState(() {
@@ -64,7 +81,10 @@ class _CreateUserPageState extends ConsumerState<CreateUserPage> {
                   value: area,
                   decoration: const InputDecoration(labelText: "Área"),
                   items: areasList
-                      .map((a) => DropdownMenuItem(value: a, child: Text(a)))
+                      .map((a) => DropdownMenuItem(
+                    value: a,
+                    child: Text(areaLabels[a] ?? a),
+                  ))
                       .toList(),
                   onChanged: (v) {
                     setState(() {
@@ -90,8 +110,10 @@ class _CreateUserPageState extends ConsumerState<CreateUserPage> {
                         .read(createUserControllerProvider.notifier)
                         .createUser(
                       email: emailCtrl.text.trim(),
-                      role: role,
-                      area: role == "USER" ? area : null,
+                      role: role,               // <-- valor REAL
+                      area: role == "USER"
+                          ? area                // <-- valor REAL
+                          : null,
                     );
 
                     if (ok && mounted) {
