@@ -52,47 +52,56 @@ Widget _DashboardContent(
     ) {
   final stats = ref.watch(dashboardStatsProvider);
 
+  final theme = Theme.of(context);
+  final colorScheme = theme.colorScheme;
+
   return Scaffold(
     appBar: AppBar(
-      title: const Text('Dashboard'),
+      title: Row(
+        children: [
+          const Icon(Icons.dashboard_customize_rounded),
+          const SizedBox(width: 8),
+          const Text('FleetCare Dashboard'),
+        ],
+      ),
       actions: [
         if (roles.contains("ADMIN") || areas.contains("MAINTENANCE"))
           IconButton(
             tooltip: 'Buses',
-            icon: const Icon(Icons.directions_bus),
+            icon: const Icon(Icons.directions_bus_rounded),
             onPressed: () => context.push('/buslist'),
           ),
 
         if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
           IconButton(
             tooltip: 'Órdenes',
-            icon: const Icon(Icons.build_circle),
+            icon: const Icon(Icons.build_circle_rounded),
             onPressed: () => context.push('/maintenance'),
           ),
 
-        //if (roles.contains("ADMIN") || areas.contains("FINANCE"))
-          IconButton(
-            tooltip: 'Informe IA',
-            icon: const Icon(Icons.picture_as_pdf_outlined),
-            onPressed: () => context.push('/report'),
-          ),
+        IconButton(
+          tooltip: 'Informe IA',
+          icon: const Icon(Icons.auto_graph_rounded),
+          onPressed: () => context.push('/report'),
+        ),
 
         if (roles.contains("ADMIN"))
           IconButton(
             tooltip: 'Config',
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings_rounded),
             onPressed: () => context.push('/settings'),
           ),
+
         if (roles.contains("ADMIN"))
           IconButton(
             tooltip: 'Crear usuario',
-            icon: const Icon(Icons.person_add),
+            icon: const Icon(Icons.person_add_alt_1_rounded),
             onPressed: () => context.push('/admin/users'),
           ),
 
         IconButton(
           tooltip: "Cerrar sesión",
-          icon: const Icon(Icons.logout),
+          icon: const Icon(Icons.logout_rounded),
           onPressed: () async {
             await ref.read(authControllerProvider.notifier).logout();
           },
@@ -100,12 +109,11 @@ Widget _DashboardContent(
       ],
     ),
 
-    // ---------- BODY ----------
     body: stats.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (s) {
-        final total = (s.totalBuses == 0) ? 1 : s.totalBuses;
+        final total = s.totalBuses == 0 ? 1 : s.totalBuses;
 
         final pOk = s.ok / total;
         final pSoon = s.dueSoon / total;
@@ -119,139 +127,154 @@ Widget _DashboardContent(
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Acciones rápidas
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (roles.contains("ADMIN") || areas.contains("MAINTENANCE"))
-                    _QuickChip(
-                      label: 'Buses',
-                      icon: Icons.directions_bus,
-                      onTap: () => context.push('/buslist'),
-                    ),
 
-
-                  if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
-                    _QuickChip(
-                      label: 'Notificaciones',
-                      icon: Icons.warning_amber_rounded,
-                      onTap: () => context.push('/notifications'),
-                    ),
-
-                  if (roles.contains("ADMIN") || areas.contains("OPERATIONS") || areas.contains("MAINTENANCE"))
-                    _QuickChip(
-                      label: 'Órdenes',
-                      icon: Icons.build_circle_outlined,
-                      onTap: () => context.push('/maintenance'),
-                    ),
-
-                  if (roles.contains("ADMIN"))
-                    _QuickChip(
-                      label: 'Config',
-                      icon: Icons.settings,
-                      onTap: () => context.push('/settings'),
-                    ),
-                  if (roles.contains("ADMIN"))
-                    _QuickChip(
-                      label: 'Crear usuario',
-                      icon: Icons.person_add,
-                      onTap: () => context.push('/admin/users'),
-                    ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // KPI CARDS
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  _StatCard(
-                      title: 'Total buses',
-                      value: s.totalBuses.toString(),
-                      color: Colors.blue),
-                  _StatCard(
-                      title: 'OK',
-                      value: s.ok.toString(),
-                      color: Colors.green),
-                  _StatCard(
-                      title: 'Próximo',
-                      value: s.dueSoon.toString(),
-                      color: Colors.orange),
-                  _StatCard(
-                      title: 'Vencido',
-                      value: s.overdue.toString(),
-                      color: Colors.red),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // BARRA DE DISTRIBUCIÓN
+              // HEADER CARD
               Card(
                 elevation: 0,
+                color: colorScheme.primaryContainer.withOpacity(0.25),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
                     children: [
-                      const Text('Distribución de estado',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      _KpiBar(
-                          label: 'OK',
-                          value: pOk,
-                          color: Colors.green,
-                          trailing:
-                          '${(pOk * 100).toStringAsFixed(0)}%'),
-                      _KpiBar(
-                          label: 'Próximo',
-                          value: pSoon,
-                          color: Colors.orange,
-                          trailing:
-                          '${(pSoon * 100).toStringAsFixed(0)}%'),
-                      _KpiBar(
-                          label: 'Vencido',
-                          value: pOver,
-                          color: Colors.red,
-                          trailing:
-                          '${(pOver * 100).toStringAsFixed(0)}%'),
+                      Icon(Icons.directions_bus_rounded,
+                          size: 40, color: colorScheme.primary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          "Bienvenido a tu panel de control",
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // ÓRDENES
+              // QUICK ACTIONS MODERNOS
+              Text(
+                "Acciones rápidas",
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _StatCard(
-                      title: 'Planificadas',
-                      value: s.planned.toString(),
-                      color: Colors.indigo),
-                  _StatCard(
-                      title: 'Abiertas',
-                      value: s.open.toString(),
-                      color: Colors.teal),
-                  _StatCard(
-                      title: 'Cerradas',
-                      value: s.closed.toString(),
-                      color: Colors.grey),
+                  if (roles.contains("ADMIN") || areas.contains("MAINTENANCE"))
+                    _QuickButton(
+                      label: 'Buses',
+                      icon: Icons.directions_bus_filled_rounded,
+                      onTap: () => context.push('/buslist'),
+                    ),
+
+                  if (roles.contains("ADMIN") || areas.contains("OPERATIONS"))
+                    _QuickButton(
+                      label: 'Notificaciones',
+                      icon: Icons.notifications_active_rounded,
+                      onTap: () => context.push('/notifications'),
+                    ),
+
+                  _QuickButton(
+                    label: 'Órdenes',
+                    icon: Icons.build_rounded,
+                    onTap: () => context.push('/maintenance'),
+                  ),
+
+                  if (roles.contains("ADMIN"))
+                    _QuickButton(
+                      label: 'Crear usuario',
+                      icon: Icons.person_add_rounded,
+                      onTap: () => context.push('/admin/users'),
+                    ),
                 ],
               ),
 
               const SizedBox(height: 24),
 
-              // LISTA URGENTES
-              const Text('Más urgentes (vencidos)',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
+              // KPI GRID
+              Text(
+                "Estado de la flota",
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  _KpiCard(title: "Total", value: s.totalBuses.toString(), color: Colors.blue),
+                  _KpiCard(title: "OK", value: s.ok.toString(), color: Colors.green),
+                  _KpiCard(title: "Próximo", value: s.dueSoon.toString(), color: Colors.orange),
+                  _KpiCard(title: "Vencido", value: s.overdue.toString(), color: Colors.red),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // PROGRESS BARS
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Distribución de estados',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      _ModernBar(label: 'OK', value: pOk, color: Colors.green),
+                      _ModernBar(label: 'Próximo', value: pSoon, color: Colors.orange),
+                      _ModernBar(label: 'Vencido', value: pOver, color: Colors.red),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // ÓRDENES
+              Text(
+                "Órdenes de mantenimiento",
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  _KpiCard(title: "Planificadas", value: s.planned.toString(), color: Colors.indigo),
+                  _KpiCard(title: "Abiertas", value: s.open.toString(), color: Colors.teal),
+                  _KpiCard(title: "Cerradas", value: s.closed.toString(), color: Colors.grey),
+                ],
+              ),
+
+              const SizedBox(height: 32),
+
+              Text(
+                "Más urgentes",
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
               _UrgentList(buses: s.topOverdue),
             ],
           ),
@@ -263,44 +286,79 @@ Widget _DashboardContent(
 
 // ---------- Widgets de apoyo ----------
 
-class _QuickChip extends StatelessWidget {
-  const _QuickChip({required this.label, required this.icon, required this.onTap});
+class _QuickButton extends StatelessWidget {
+  const _QuickButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
   final String label;
   final IconData icon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: 18),
-      label: Text(label),
-      onPressed: onTap,
+    final theme = Theme.of(context);
+    final c = theme.colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        decoration: BoxDecoration(
+          color: c.primary.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: c.primary),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: c.primary)),
+          ],
+        ),
+      ),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.title, required this.value, required this.color});
+class _KpiCard extends StatelessWidget {
   final String title;
   final String value;
   final Color color;
 
+  const _KpiCard({
+    required this.title,
+    required this.value,
+    required this.color,
+  });
+
   @override
   Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+
     return SizedBox(
       width: 160,
-      height: 96,
       child: Card(
-        elevation: 0,
+        elevation: 1,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         color: color.withOpacity(0.12),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-              const Spacer(),
-              Text(value, style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: color)),
+              Text(title,
+                  style: TextStyle(
+                      color: color, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              Text(value,
+                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  )),
             ],
           ),
         ),
@@ -309,34 +367,42 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _KpiBar extends StatelessWidget {
-  const _KpiBar({required this.label, required this.value, required this.color, this.trailing});
+class _ModernBar extends StatelessWidget {
   final String label;
-  final double value; // 0..1
+  final double value;
   final Color color;
-  final String? trailing;
+
+  const _ModernBar({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     final v = value.clamp(0.0, 1.0);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 88, child: Text(label)),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: v,
-                minHeight: 10,
-                backgroundColor: color.withOpacity(0.12),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
+          Row(
+            children: [
+              Expanded(child: Text(label)),
+              Text("${(v * 100).toStringAsFixed(0)}%"),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: v,
+              minHeight: 12,
+              backgroundColor: color.withOpacity(0.15),
+              valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
-          const SizedBox(width: 12),
-          SizedBox(width: 44, child: Text(trailing ?? '', textAlign: TextAlign.right)),
         ],
       ),
     );
