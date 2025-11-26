@@ -304,6 +304,28 @@ class _BusListView extends ConsumerWidget {
   }
 }
 
+// Lista de marcas disponibles
+const brands = [
+  "Toyota",
+  "Hyundai",
+  "Mercedes-Benz",
+  "Volvo",
+  "Scania",
+  "Daewoo",
+  "Renault",
+];
+
+// Modelos por marca
+const modelsByBrand = {
+  "Toyota": ["Coaster", "HiAce", "Urban"],
+  "Hyundai": ["County", "Aero City", "Universe"],
+  "Mercedes-Benz": ["Sprinter", "Citaro", "Tourismo"],
+  "Volvo": ["B7R", "7900", "9700"],
+  "Scania": ["K310", "F310", "Citywide"],
+  "Daewoo": ["BV120MA", "BH090", "BC211"],
+  "Renault": ["Master", "Traffic", "Irisbus"],
+};
+
 class _BusFormDialog extends ConsumerStatefulWidget {
   const _BusFormDialog({this.initial, super.key});
   final Bus? initial;
@@ -313,6 +335,8 @@ class _BusFormDialog extends ConsumerStatefulWidget {
 }
 
 class _BusFormDialogState extends ConsumerState<_BusFormDialog> {
+  String? selectedBrand;
+  String? selectedModel;
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _plate;
   late final TextEditingController _km;
@@ -327,7 +351,17 @@ class _BusFormDialogState extends ConsumerState<_BusFormDialog> {
     _km = TextEditingController(text: (widget.initial?.kmCurrent ?? 0).toString());
     _lastServiceAt = widget.initial?.lastMaintenanceDate ?? DateTime.now();
     _alias.text = widget.initial?.alias ?? '';
+
+    // Si existe notes, intentamos extraer marca y modelo
     _notes.text = widget.initial?.notes ?? '';
+
+    if (widget.initial?.notes != null) {
+      final parts = widget.initial!.notes!.split(" | ");
+      if (parts.length == 2) {
+        selectedBrand = parts[0];
+        selectedModel = parts[1];
+      }
+    }
   }
 
   @override
@@ -342,96 +376,197 @@ class _BusFormDialogState extends ConsumerState<_BusFormDialog> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.initial != null;
-    return AlertDialog(
-      title: Text(isEdit ? 'Editar bus' : 'Nuevo bus'),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextFormField(
-              controller: _plate,
-              decoration: const InputDecoration(labelText: 'Placa *'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
-            ),
-            TextFormField(
-              controller: _km,
-              decoration: const InputDecoration(labelText: 'Km actual *'),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Requerido';
-                final n = int.tryParse(v);
-                if (n == null || n < 0) return 'Km inválido';
-                final last = widget.initial?.kmCurrent ?? 0;
-                if (isEdit && n < last) return 'No puede ser menor al último ($last)';
-                return null;
-              },
-            ),
-            const SizedBox(height: 8),
-            Row(
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Último mantenimiento: '),
-                TextButton(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _lastServiceAt ?? DateTime.now(),
-                      firstDate: DateTime(2015),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (picked != null) setState(() => _lastServiceAt = picked);
-                  },
-                  child: Text(
-                    _lastServiceAt == null
-                        ? 'Elegir fecha'
-                        : _lastServiceAt!.toLocal().toString().split(' ').first,
+
+                // HEADER
+                Row(
+                  children: [
+                    Icon(
+                      isEdit ? Icons.directions_bus_filled : Icons.add_road,
+                      size: 32,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      isEdit ? "Editar Bus" : "Registrar Nuevo Bus",
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 20),
+
+                // CARD DE DATOS PRINCIPALES
+                Card(
+                  elevation: 0,
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+
+                        TextFormField(
+                          controller: _plate,
+                          decoration: const InputDecoration(
+                            labelText: 'Placa *',
+                            prefixIcon: Icon(Icons.directions_bus),
+                          ),
+                          validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _km,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Km actual *',
+                            prefixIcon: Icon(Icons.speed),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Requerido';
+                            final n = int.tryParse(v);
+                            if (n == null || n < 0) return 'Km inválido';
+                            final last = widget.initial?.kmCurrent ?? 0;
+                            if (isEdit && n < last) {
+                              return 'No puede ser menor al último ($last)';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // CARD DE MARCA Y MODELO
+                Card(
+                  elevation: 0,
+                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      children: [
+
+                        DropdownButtonFormField<String>(
+                          value: selectedBrand,
+                          decoration: const InputDecoration(
+                            labelText: "Marca",
+                            prefixIcon: Icon(Icons.local_shipping),
+                          ),
+                          items: brands
+                              .map((b) =>
+                              DropdownMenuItem(value: b, child: Text(b)))
+                              .toList(),
+                          onChanged: (v) {
+                            setState(() {
+                              selectedBrand = v;
+                              selectedModel = null;
+                            });
+                          },
+                          validator: (v) =>
+                          v == null ? "Selecciona una marca" : null,
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        if (selectedBrand != null)
+                          DropdownButtonFormField<String>(
+                            value: selectedModel,
+                            decoration: const InputDecoration(
+                              labelText: "Modelo",
+                              prefixIcon: Icon(Icons.directions_car),
+                            ),
+                            items: modelsByBrand[selectedBrand]!
+                                .map((m) => DropdownMenuItem(
+                              value: m,
+                              child: Text(m),
+                            ))
+                                .toList(),
+                            onChanged: (v) => setState(() => selectedModel = v),
+                            validator: (v) =>
+                            v == null ? "Selecciona un modelo" : null,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // BOTONES
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancelar"),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    FilledButton(
+                      onPressed: () async {
+                        if (!_formKey.currentState!.validate()) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Revisa los campos obligatorios")),
+                          );
+                          return;
+                        }
+
+                        final notifier = ref.read(busListControllerProvider.notifier);
+
+                        final notes = "$selectedBrand | $selectedModel";
+
+                        final bus = (widget.initial ??
+                            Bus(id: '', plate: _plate.text.trim(), kmCurrent: 0))
+                            .copyWith(
+                          plate: _plate.text.trim(),
+                          kmCurrent: int.parse(_km.text),
+                          lastMaintenanceDate: _lastServiceAt,
+                          alias: _alias.text.trim().isEmpty ? null : _alias.text.trim(),
+                          notes: notes,
+                        );
+
+                        await notifier.save(bus);
+
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(isEdit ? "Bus actualizado" : "Bus creado"),
+                            ),
+                          );
+                        }
+                      },
+                      child: Text(isEdit ? "Guardar" : "Crear"),
+                    ),
+                  ],
                 ),
               ],
             ),
-            TextFormField(
-              controller: _alias,
-              decoration: const InputDecoration(labelText: 'Alias'),
-            ),
-            TextFormField(
-              controller: _notes,
-              decoration: const InputDecoration(labelText: 'Notas'),
-              maxLines: 2,
-            ),
-          ]),
+          ),
         ),
       ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
-        FilledButton(
-          onPressed: () async {
-            if (!_formKey.currentState!.validate()) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Revisa los campos obligatorios')),
-                );
-              }
-              return;
-            }
-            final notifier = ref.read(busListControllerProvider.notifier);
-            final isEdit = widget.initial != null;
-            final bus = (widget.initial ?? Bus(id: '', plate: _plate.text.trim(), kmCurrent: 0)).copyWith(
-              plate: _plate.text.trim(),
-              kmCurrent: int.parse(_km.text),
-              lastMaintenanceDate: _lastServiceAt,
-              alias: _alias.text.trim().isEmpty ? null : _alias.text.trim(),
-              notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-            );
-            await notifier.save(bus);
-            if (context.mounted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(isEdit ? 'Bus actualizado' : 'Bus creado')),
-              );
-            }
-          },
-          child: Text(isEdit ? 'Guardar' : 'Crear'),
-        ),
-      ],
     );
   }
 }
